@@ -1,0 +1,61 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { AccountGate } from "@/components/account-gate";
+import { RegistrationCard } from "@/components/registration-card";
+import { api } from "@/lib/api";
+import { useSession } from "@/lib/session";
+import type { Registration } from "@/lib/types";
+
+export default function TicketPage() {
+  const { code } = useParams<{ code: string }>();
+  const { user, loading } = useSession();
+  const [ticket, setTicket] = useState<Registration | null>(null);
+  const [error, setError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    api.ticket(code).then(setTicket).catch((err: Error) => setError(err.message));
+  }, [code, user, loading]);
+
+  async function cancel() {
+    if (!ticket || !confirm("এই নিবন্ধন বাতিল করবেন?")) return;
+    setCancelling(true);
+    try {
+      await api.cancelMine(ticket.public_code);
+      setTicket({ ...ticket, status: "cancelled" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "বাতিল হয়নি");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  if (loading) return <main className="mx-auto max-w-md px-4 py-16">টিকিট লোড হচ্ছে…</main>;
+  if (!user) {
+    return (
+      <main className="mx-auto max-w-lg px-4 py-16">
+        <AccountGate title="আপনার টিকিট" body="যে আলোআয়ন অ্যাকাউন্ট দিয়ে নাম লিখেছেন, সেটি দিয়ে প্রবেশ করুন। তারপর এই পাতায় পাস দেখা যাবে।" />
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto max-w-md px-4 py-10">
+      {error && <p className="mb-4 text-sm text-red-700">{error}</p>}
+      {!ticket && !error && <p>টিকিট লোড হচ্ছে…</p>}
+      {ticket && (
+        <>
+          <RegistrationCard registration={ticket} showTicketLink={false} />
+          {ticket.status !== "cancelled" && ticket.status !== "checked_in" && (
+            <button className="btn btn-ghost mt-4" disabled={cancelling} onClick={cancel}>নিবন্ধন বাতিল</button>
+          )}
+          <Link href="/my-events" className="mt-4 block text-center text-sm underline">আমার সব ইভেন্ট</Link>
+        </>
+      )}
+    </main>
+  );
+}
