@@ -11,6 +11,8 @@ import { personName } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import type { CustomField, PublicEvent, Registration } from "@/lib/types";
 
+type RegistrationStep = "segments" | "questions" | "review";
+
 export default function RegisterPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user, loading, logout } = useSession();
@@ -63,8 +65,12 @@ export default function RegisterPage() {
 
   const needsSegments = event.allow_segment_registration && event.segments.length > 0;
   const needsQuestions = event.fields.length > 0 || (event.food_enabled && event.meals.length > 0);
-  const steps = [...(needsSegments ? ["segments"] : []), ...(needsQuestions ? ["questions"] : []), "review"] as const;
-  const stepLabel = { segments: "অংশ", questions: "প্রশ্ন", review: "যাচাই" };
+  const steps: RegistrationStep[] = [
+    ...(needsSegments ? (["segments"] as const) : []),
+    ...(needsQuestions ? (["questions"] as const) : []),
+    "review",
+  ];
+  const stepLabel: Record<RegistrationStep, string> = { segments: "অংশ", questions: "প্রশ্ন", review: "যাচাই" };
   const current = steps[step] || "review";
 
   async function submit() {
