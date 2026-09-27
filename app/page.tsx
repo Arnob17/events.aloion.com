@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { FieldLabel } from "@/components/field-label";
 import { api, mediaURL } from "@/lib/api";
 import { CATEGORIES, categoryLabel, place, statusLabel, whenDay } from "@/lib/format";
 import type { EventCard } from "@/lib/types";
@@ -39,23 +40,31 @@ export default function DiscoverPage() {
         <p className="mt-3 max-w-xl text-lg text-[var(--muted)]">
           স্কুল, ক্লাব ও কমিউনিটির অনুষ্ঠান। আলোআয়ন অ্যাকাউন্টে নাম লিখুন। টিকিট, সময় ও অংশ এই পাতায় থাকবে।
         </p>
-        <form className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => event.preventDefault()}>
-          <input className="field" placeholder="ইভেন্ট খুঁজুন" value={q} onChange={(event) => setQ(event.target.value)} />
-          <select className="field" value={category} onChange={(event) => setCategory(event.target.value)}>
-            <option value="">সব বিভাগ</option>
-            {CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-          <select className="field" value={location} onChange={(event) => setLocation(event.target.value)}>
-            <option value="">যেকোনো জায়গা</option>
-            <option value="physical">সশরীরে</option>
-            <option value="online">অনলাইন</option>
-            <option value="hybrid">মিশ্র</option>
-          </select>
-          <select className="field" value={registration} onChange={(event) => setRegistration(event.target.value)}>
-            <option value="">সব নিবন্ধন</option>
-            <option value="open">নিবন্ধন চলছে</option>
-            <option value="closed">নিবন্ধন বন্ধ</option>
-          </select>
+        <form className="mt-6 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => event.preventDefault()}>
+          <FieldLabel label="ইভেন্ট খুঁজুন">
+            <input className="field" value={q} onChange={(event) => setQ(event.target.value)} />
+          </FieldLabel>
+          <FieldLabel label="বিভাগ">
+            <select className="field" value={category} onChange={(event) => setCategory(event.target.value)}>
+              <option value="">সব বিভাগ</option>
+              {CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </FieldLabel>
+          <FieldLabel label="জায়গা">
+            <select className="field" value={location} onChange={(event) => setLocation(event.target.value)}>
+              <option value="">যেকোনো জায়গা</option>
+              <option value="physical">সশরীরে</option>
+              <option value="online">অনলাইন</option>
+              <option value="hybrid">মিশ্র</option>
+            </select>
+          </FieldLabel>
+          <FieldLabel label="নিবন্ধন">
+            <select className="field" value={registration} onChange={(event) => setRegistration(event.target.value)}>
+              <option value="">সব নিবন্ধন</option>
+              <option value="open">নিবন্ধন চলছে</option>
+              <option value="closed">নিবন্ধন বন্ধ</option>
+            </select>
+          </FieldLabel>
         </form>
       </header>
 

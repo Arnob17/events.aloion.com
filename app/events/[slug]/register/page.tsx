@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AccountGate } from "@/components/account-gate";
+import { FieldLabel } from "@/components/field-label";
+import { PAY_METHODS, payNumber, type PayMethod } from "@/components/pay-method";
 import { RegistrationCard } from "@/components/registration-card";
 import { TicketQR } from "@/components/ticket-qr";
 import { api } from "@/lib/api";
@@ -11,7 +13,7 @@ import { money, personName } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import type { CustomField, PublicEvent, Registration } from "@/lib/types";
 
-type RegistrationStep = "segments" | "questions" | "review";
+type RegistrationStep = "segments" | "questions" | "payment" | "review";
 
 export default function RegisterPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -21,6 +23,8 @@ export default function RegisterPage() {
   const [segments, setSegments] = useState<number[]>([]);
   const [answers, setAnswers] = useState<Record<number, { value?: string; values?: string[] }>>({});
   const [mealId, setMealId] = useState<number | null>(null);
+  const [method, setMethod] = useState<PayMethod | "">("");
+  const [trx, setTrx] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState<Registration | null>(null);
   const [saving, setSaving] = useState(false);
@@ -55,6 +59,7 @@ export default function RegisterPage() {
         <p className="mt-4 text-sm text-[var(--muted)]">নিবন্ধন নম্বর</p>
         <p className="font-mono text-2xl">{done.public_code}</p>
         {done.amount_due > 0 && <p className="mt-3 text-lg font-semibold">মোট {money(done.amount_due, done.currency || event.currency)}</p>}
+        {done.transaction_id && <p className="mt-2 text-sm">ট্রানজাকশন আইডি <span className="font-mono">{done.transaction_id}</span>. আয়োজক মিলিয়ে নিবন্ধন গ্রহণ করবেন।</p>}
         {done.qr_token && <TicketQR token={done.qr_token} />}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link href={`/events/${event.slug}`} className="btn btn-ghost">ইভেন্টের পাতা</Link>
@@ -67,12 +72,15 @@ export default function RegisterPage() {
   const needsSegments = event.allow_segment_registration && event.segments.length > 0;
   const mustPickSegment = needsSegments && event.segments.some((segment) => segment.registration_required);
   const needsQuestions = event.fields.length > 0 || (event.food_enabled && event.meals.length > 0);
+  const total = registrationTotal(event, segments);
+  const needsPay = total > 0;
   const steps: RegistrationStep[] = [
     ...(needsSegments ? (["segments"] as const) : []),
     ...(needsQuestions ? (["questions"] as const) : []),
+    ...(needsPay ? (["payment"] as const) : []),
     "review",
   ];
-  const stepLabel: Record<RegistrationStep, string> = { segments: "অংশ", questions: "প্রশ্ন", review: "যাচাই" };
+  const stepLabel: Record<RegistrationStep, string> = { segments: "অংশ", questions: "প্রশ্ন", payment: "পেমেন্ট", review: "যাচাই" };
   const current = steps[step] || "review";
 
   async function submit() {
@@ -83,6 +91,8 @@ export default function RegisterPage() {
       const registration = await api.register(event.id, {
         segment_ids: segments,
         meal_id: mealId,
+        payment_method: needsPay ? method : "",
+        transaction_id: needsPay ? trx.trim() : "",
         answers: event.fields.map((field) => ({
           field_id: field.id,
           value: answers[field.id]?.value || "",
@@ -140,11 +150,15 @@ export default function RegisterPage() {
             {event.fields.map((field) => <FieldInput key={field.id} field={field} value={answers[field.id]} onChange={(next) => setAnswers({ ...answers, [field.id]: next })} />)}
           </div>
         )}
+        {current === "payment" && (
+          <PaymentStep event={event} total={total} method={method} trx={trx} onMethod={setMethod} onTrx={setTrx} />
+        )}
         {current === "review" && (
           <div className="space-y-2 text-sm">
             <p><strong>{personName(user)}</strong> · {user.email}</p>
             {segments.length === 0 && <p>অংশ: পুরো ইভেন্ট</p>}
             <FeeSummary event={event} segmentIds={segments} />
+            {needsPay && <p>পেমেন্ট: {PAY_METHODS.find((item) => item.id === method)?.label || "—"} · ট্রানজাকশন আইডি {trx.trim() || "—"}</p>}
             {event.food_enabled && <p>খাবার: {event.meals.find((meal) => meal.id === mealId)?.name || "—"}</p>}
             {event.fields.map((field) => <p key={field.id}>{field.label}: {answers[field.id]?.values?.join(", ") || answers[field.id]?.value || "—"}</p>)}
           </div>
@@ -156,7 +170,7 @@ export default function RegisterPage() {
           {current === "review" ? (
             <button className="btn btn-primary w-full sm:w-auto" disabled={saving} onClick={submit}>{saving ? "জমা হচ্ছে…" : "নিবন্ধন নিশ্চিত করুন"}</button>
           ) : (
-            <button className="btn btn-primary w-full sm:w-auto" disabled={(current === "questions" && event.food_enabled && event.meals.length > 0 && !mealId) || (current === "segments" && mustPickSegment && segments.length === 0)} onClick={() => setStep((value) => value + 1)}>এগোন</button>
+            <button className="btn btn-primary w-full sm:w-auto" disabled={(current === "questions" && event.food_enabled && event.meals.length > 0 && !mealId) || (current === "segments" && mustPickSegment && segments.length === 0) || (current === "payment" && (!method || !trx.trim()))} onClick={() => setStep((value) => value + 1)}>এগোন</button>
           )}
         </div>
       </div>
@@ -164,10 +178,15 @@ export default function RegisterPage() {
   );
 }
 
+function registrationTotal(event: PublicEvent, segmentIds: number[]) {
+  const selected = event.segments.filter((segment) => segmentIds.includes(segment.id));
+  return (event.fee_amount || 0) + selected.reduce((sum, segment) => sum + (segment.fee_amount || 0), 0);
+}
+
 function FeeSummary({ event, segmentIds }: { event: PublicEvent; segmentIds: number[] }) {
   const selected = event.segments.filter((segment) => segmentIds.includes(segment.id));
   const base = event.fee_amount || 0;
-  const total = base + selected.reduce((sum, segment) => sum + (segment.fee_amount || 0), 0);
+  const total = registrationTotal(event, segmentIds);
   return (
     <div className="mt-4 rounded-xl bg-[var(--paper)] p-3 text-sm">
       {selected.map((segment) => (
@@ -186,6 +205,33 @@ function FeeSummary({ event, segmentIds }: { event: PublicEvent; segmentIds: num
         <span>মোট</span>
         <span>{money(total, event.currency)}</span>
       </p>
+    </div>
+  );
+}
+
+function PaymentStep({ event, total, method, trx, onMethod, onTrx }: { event: PublicEvent; total: number; method: PayMethod | ""; trx: string; onMethod: (method: PayMethod) => void; onTrx: (value: string) => void }) {
+  const number = method ? payNumber(event, method) : "";
+  const wallet = PAY_METHODS.find((item) => item.id === method);
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[var(--muted)]">মোট {money(total, event.currency)}। যেখান থেকে টাকা পাঠাচ্ছেন, সেটি বেছে নিন।</p>
+      <div className="grid grid-cols-2 gap-2">
+        {PAY_METHODS.map((item) => (
+          <button key={item.id} type="button" aria-pressed={method === item.id} className={`flex items-center justify-center rounded-xl border bg-white px-3 py-3 ${method === item.id ? "border-[var(--pine)] ring-2 ring-[var(--pine)]" : "border-[var(--line)]"}`} onClick={() => onMethod(item.id)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={item.logo} alt={item.label} className="h-10 w-auto max-w-full object-contain" />
+          </button>
+        ))}
+      </div>
+      {method && (
+        <div className="rounded-xl bg-[var(--paper)] p-4">
+          <p className="text-sm text-[var(--muted)]">{wallet?.label} এ এই নম্বরে টাকা পাঠান</p>
+          {number ? <p className="mt-1 font-mono text-2xl tracking-wide">{number}</p> : <p className="mt-1 text-sm">আয়োজক এখনও {wallet?.label} নম্বর দেননি।</p>}
+        </div>
+      )}
+      <FieldLabel label="ট্রানজাকশন আইডি">
+        <input className="field font-mono" value={trx} onChange={(change) => onTrx(change.target.value)} placeholder="যেমন 8N7A2K3P" autoComplete="off" />
+      </FieldLabel>
     </div>
   );
 }

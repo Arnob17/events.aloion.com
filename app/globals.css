@@ -114,6 +114,18 @@ body {
   border-color: var(--pine);
 }
 
+.field-label {
+  display: block;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.field-label > span:first-child {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
 .card {
   background: white;
   border: 1px solid var(--line);

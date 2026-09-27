@@ -124,6 +124,8 @@ export interface PublicEvent extends EventCard {
   rules: string;
   faq: FAQ[];
   food_enabled: boolean;
+  bkash_number: string;
+  nagad_number: string;
   segments: Segment[];
   fields: CustomField[];
   meals: Meal[];
@@ -134,6 +136,8 @@ export interface Registration {
   public_code: string;
   status: string;
   payment_status: string;
+  payment_method?: string;
+  transaction_id?: string;
   amount_due: number;
   currency?: string;
   registered_at: string;
@@ -238,6 +242,8 @@ export interface EventInput {
   online_url?: string;
   registration_required?: boolean;
   fee_amount?: number;
+  bkash_number?: string;
+  nagad_number?: string;
   has_capacity?: boolean;
   capacity?: number;
   waitlist_enabled?: boolean;

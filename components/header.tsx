@@ -28,9 +28,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--line)] bg-[var(--paper)]">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" className="min-w-0 text-[var(--ink)]">
-          <span className="serif text-[1.45rem] leading-none sm:text-[1.7rem]">আলোআয়ন</span>
-          <span className="ml-2 text-sm text-[var(--muted)]">ইভেন্ট</span>
+        <Link href="/" className="min-w-0 shrink-0" aria-label="আলোআয়ন ইভেন্ট">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/navbar_log.png" alt="আলোআয়ন ইভেন্ট" className="h-14 w-auto sm:h-[4.5rem]" />
         </Link>
         <nav className="hidden items-center gap-1 text-sm md:flex">
           <SiteLinks user={user} />

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AloionMark } from "@/components/aloion-mark";
+import { FieldLabel } from "@/components/field-label";
 import { api } from "@/lib/api";
 import { statusLabel } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -28,9 +29,11 @@ export default function AdminEventsPage() {
     <main className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="serif text-4xl sm:text-5xl">ইভেন্ট পর্যালোচনা</h1>
       <div className="mt-4 flex gap-2">
-        <select className="field max-w-[14rem]" value={status} onChange={(event) => setStatus(event.target.value)}>
-          {["submitted", "draft", "approved", "published", "registration_open", "rejected", "cancelled"].map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
-        </select>
+        <FieldLabel label="অবস্থা" className="max-w-[14rem]">
+          <select className="field" value={status} onChange={(event) => setStatus(event.target.value)}>
+            {["submitted", "draft", "approved", "published", "registration_open", "rejected", "cancelled"].map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
+          </select>
+        </FieldLabel>
       </div>
       <div className="mt-4 space-y-3">
         {events.map((event) => (
@@ -43,8 +46,10 @@ export default function AdminEventsPage() {
           </div>
         ))}
       </div>
-      <form className="mt-8 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); api.grant(identifier).then(() => setMessage("তিনি অনুমোদন ছাড়াই প্রকাশ করতে পারবেন")).catch((err: Error) => setMessage(err.message)); }}>
-        <input className="field sm:min-w-0 sm:flex-1" placeholder="আয়োজকের ইমেইল বা ইউজারনেম" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
+      <form className="mt-8 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); api.grant(identifier).then(() => setMessage("তিনি অনুমোদন ছাড়াই প্রকাশ করতে পারবেন")).catch((err: Error) => setMessage(err.message)); }}>
+        <FieldLabel label="আয়োজকের ইমেইল বা ইউজারনেম" className="sm:min-w-0 sm:flex-1">
+          <input className="field" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
+        </FieldLabel>
         <button className="btn btn-primary shrink-0">প্রকাশের অনুমতি</button>
       </form>
       {message && <p className="mt-3 text-sm">{message}</p>}

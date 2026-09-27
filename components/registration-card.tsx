@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TicketQR } from "@/components/ticket-qr";
+import { payMethodLabel } from "@/components/pay-method";
 import { money, personName, place, statusLabel, when } from "@/lib/format";
 import type { Registration } from "@/lib/types";
 
@@ -27,6 +28,12 @@ export function RegistrationCard({ registration, compact = false, showTicketLink
           <span>মোট</span>
           <span>{money(registration.amount_due || 0, registration.currency)}{registration.amount_due > 0 ? ` · ${statusLabel(registration.payment_status)}` : ""}</span>
         </p>
+        {registration.transaction_id && (
+          <p className="text-sm">
+            {payMethodLabel(registration.payment_method) ? `${payMethodLabel(registration.payment_method)} · ` : ""}
+            ট্রানজাকশন আইডি <span className="font-mono">{registration.transaction_id}</span>
+          </p>
+        )}
         {registration.segments.length > 0 && (
           <ul className="space-y-2 text-sm">
             {registration.segments.map((segment) => (

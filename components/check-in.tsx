@@ -2,6 +2,7 @@
 
 import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { useEffect, useRef, useState } from "react";
+import { FieldLabel } from "@/components/field-label";
 import { api } from "@/lib/api";
 import type { ScanResult } from "@/lib/types";
 
@@ -78,8 +79,10 @@ export function CheckIn({ eventId }: { eventId: number }) {
   return (
     <div className="mx-auto max-w-md">
       <div id="qr-reader" className="overflow-hidden rounded-[1.1rem] bg-black" />
-      <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); lookup({ code }); }}>
-        <input className="field sm:min-w-0 sm:flex-1" placeholder="নিবন্ধন নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
+      <form className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); lookup({ code }); }}>
+        <FieldLabel label="নিবন্ধন নম্বর" className="sm:min-w-0 sm:flex-1">
+          <input className="field" value={code} onChange={(event) => setCode(event.target.value)} />
+        </FieldLabel>
         <button className="btn btn-primary shrink-0">খুঁজুন</button>
       </form>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}

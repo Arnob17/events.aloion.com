@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AloionMark } from "@/components/aloion-mark";
+import { FieldLabel } from "@/components/field-label";
 import { api } from "@/lib/api";
 import { CATEGORIES } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -28,6 +29,8 @@ export default function NewEventPage() {
     online_url: "",
     capacity: "",
     fee_amount: "0",
+    bkash_number: "",
+    nagad_number: "",
     visibility: "public",
   });
 
@@ -58,6 +61,8 @@ export default function NewEventPage() {
         has_capacity: form.capacity !== "",
         capacity: Number(form.capacity) || undefined,
         fee_amount: Number(form.fee_amount) || 0,
+        bkash_number: form.bkash_number,
+        nagad_number: form.nagad_number,
         visibility: form.visibility,
       });
       router.push(`/organizer/events/${workspace.event.id}`);
@@ -73,35 +78,69 @@ export default function NewEventPage() {
       <div className="card mt-6 grid gap-3 p-5">
         {step === 0 && (
           <>
-            <input className="field" placeholder="বিজ্ঞান উৎসব ২০২৬" value={form.title} onChange={(event) => set("title", event.target.value)} />
-            <textarea className="field" placeholder="এক লাইনে" value={form.summary} onChange={(event) => set("summary", event.target.value)} />
-            <textarea className="field min-h-28" placeholder="কী হবে" value={form.description} onChange={(event) => set("description", event.target.value)} />
-            <select className="field" value={form.category} onChange={(event) => set("category", event.target.value)}>{CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-            <input className="field" placeholder="আয়োজক সংগঠন" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
+            <FieldLabel label="নাম">
+              <input className="field" placeholder="বিজ্ঞান উৎসব ২০২৬" value={form.title} onChange={(event) => set("title", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="এক লাইনে">
+              <textarea className="field" value={form.summary} onChange={(event) => set("summary", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="কী হবে">
+              <textarea className="field min-h-28" value={form.description} onChange={(event) => set("description", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="বিভাগ">
+              <select className="field" value={form.category} onChange={(event) => set("category", event.target.value)}>{CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+            </FieldLabel>
+            <FieldLabel label="আয়োজক সংগঠন">
+              <input className="field" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
+            </FieldLabel>
           </>
         )}
         {step === 1 && (
           <>
-            <input className="field" type="datetime-local" value={form.starts_at} onChange={(event) => set("starts_at", event.target.value)} />
-            <input className="field" type="datetime-local" value={form.ends_at} onChange={(event) => set("ends_at", event.target.value)} />
-            <select className="field" value={form.location_type} onChange={(event) => set("location_type", event.target.value)}>
-              <option value="physical">সশরীরে</option>
-              <option value="online">অনলাইন</option>
-              <option value="hybrid">মিশ্র</option>
-            </select>
-            <input className="field" placeholder="স্থান" value={form.venue} onChange={(event) => set("venue", event.target.value)} />
-            <input className="field" placeholder="ঠিকানা" value={form.address} onChange={(event) => set("address", event.target.value)} />
-            <input className="field" placeholder="অনলাইন লিংক" value={form.online_url} onChange={(event) => set("online_url", event.target.value)} />
+            <FieldLabel label="শুরু">
+              <input className="field" type="datetime-local" value={form.starts_at} onChange={(event) => set("starts_at", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="শেষ">
+              <input className="field" type="datetime-local" value={form.ends_at} onChange={(event) => set("ends_at", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="ধরন">
+              <select className="field" value={form.location_type} onChange={(event) => set("location_type", event.target.value)}>
+                <option value="physical">সশরীরে</option>
+                <option value="online">অনলাইন</option>
+                <option value="hybrid">মিশ্র</option>
+              </select>
+            </FieldLabel>
+            <FieldLabel label="স্থান">
+              <input className="field" value={form.venue} onChange={(event) => set("venue", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="ঠিকানা">
+              <input className="field" value={form.address} onChange={(event) => set("address", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="অনলাইন লিংক">
+              <input className="field" value={form.online_url} onChange={(event) => set("online_url", event.target.value)} />
+            </FieldLabel>
           </>
         )}
         {step === 2 && (
           <>
-            <input className="field" placeholder="ধারণক্ষমতা" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
-            <input className="field" placeholder="মূল নিবন্ধন ফি, অংশের ফি আলাদা" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
-            <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
-              <option value="public">সবার জন্য</option>
-              <option value="private">ব্যক্তিগত লিংক</option>
-            </select>
+            <FieldLabel label="ধারণক্ষমতা">
+              <input className="field" placeholder="খালি থাকলে সীমাহীন" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="মূল নিবন্ধন ফি">
+              <input className="field" inputMode="decimal" placeholder="অংশের ফি আলাদা" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="বিকাশ নম্বর">
+              <input className="field" inputMode="tel" placeholder="০১XXXXXXXXX" value={form.bkash_number} onChange={(event) => set("bkash_number", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="নগদ নম্বর">
+              <input className="field" inputMode="tel" placeholder="০১XXXXXXXXX" value={form.nagad_number} onChange={(event) => set("nagad_number", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="দৃশ্যমানতা">
+              <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
+                <option value="public">সবার জন্য</option>
+                <option value="private">ব্যক্তিগত লিংক</option>
+              </select>
+            </FieldLabel>
             <p className="text-sm text-[var(--muted)]">ইভেন্ট খসড়া হিসেবে শুরু হবে। এরপর অংশ ও প্রশ্ন যোগ করে জমা দিন বা প্রকাশ করুন।</p>
           </>
         )}
