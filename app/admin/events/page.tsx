@@ -26,7 +26,7 @@ export default function AdminEventsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="serif text-5xl">ইভেন্ট পর্যালোচনা</h1>
+      <h1 className="serif text-4xl sm:text-5xl">ইভেন্ট পর্যালোচনা</h1>
       <div className="mt-4 flex gap-2">
         <select className="field max-w-[14rem]" value={status} onChange={(event) => setStatus(event.target.value)}>
           {["submitted", "draft", "approved", "published", "registration_open", "rejected", "cancelled"].map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
@@ -34,18 +34,18 @@ export default function AdminEventsPage() {
       </div>
       <div className="mt-4 space-y-3">
         {events.map((event) => (
-          <div key={event.id} className="card flex items-center justify-between p-4">
-            <div><strong>{event.title}</strong><p className="text-sm text-[var(--muted)]">{event.organization_name}</p></div>
-            <div className="flex gap-2">
+          <div key={event.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0"><strong className="break-words">{event.title}</strong><p className="text-sm text-[var(--muted)]">{event.organization_name}</p></div>
+            <div className="flex flex-wrap gap-2">
               <Link className="btn btn-ghost" href={`/organizer/events/${event.id}`}>খুলুন</Link>
               {event.status === "submitted" && <button className="btn btn-primary" onClick={() => api.approve(event.id).then(() => setEvents((rows) => rows.filter((row) => row.id !== event.id)))}>অনুমোদন</button>}
             </div>
           </div>
         ))}
       </div>
-      <form className="mt-8 flex gap-2" onSubmit={(event) => { event.preventDefault(); api.grant(identifier).then(() => setMessage("তিনি অনুমোদন ছাড়াই প্রকাশ করতে পারবেন")).catch((err: Error) => setMessage(err.message)); }}>
-        <input className="field" placeholder="আয়োজকের ইমেইল বা ইউজারনেম" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
-        <button className="btn btn-primary">প্রকাশের অনুমতি</button>
+      <form className="mt-8 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); api.grant(identifier).then(() => setMessage("তিনি অনুমোদন ছাড়াই প্রকাশ করতে পারবেন")).catch((err: Error) => setMessage(err.message)); }}>
+        <input className="field sm:min-w-0 sm:flex-1" placeholder="আয়োজকের ইমেইল বা ইউজারনেম" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
+        <button className="btn btn-primary shrink-0">প্রকাশের অনুমতি</button>
       </form>
       {message && <p className="mt-3 text-sm">{message}</p>}
     </main>

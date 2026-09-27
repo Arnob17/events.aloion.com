@@ -7,6 +7,13 @@ import type { PublicEvent } from "@/lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+function feeSummary(event: PublicEvent) {
+  const priced = event.segments?.some((segment) => segment.fee_amount > 0);
+  if (priced && event.fee_amount > 0) return `${money(event.fee_amount, event.currency)} + অংশের ফি`;
+  if (priced) return "অংশ অনুযায়ী";
+  return money(event.fee_amount, event.currency);
+}
+
 async function loadEvent(slug: string): Promise<PublicEvent | null> {
   try {
     const response = await fetch(`${API}/events/${slug}`, { cache: "no-store" });
@@ -52,15 +59,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <p className="text-sm font-semibold text-[var(--pine)]">
             {[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}
           </p>
-          <h1 className="serif mt-2 text-5xl leading-[0.95] md:text-6xl">{event.title}</h1>
+          <h1 className="serif mt-2 text-4xl leading-[1.05] break-words sm:text-5xl md:text-6xl md:leading-[0.95]">{event.title}</h1>
           <p className="mt-4 text-lg text-[var(--muted)]">{event.summary}</p>
           {event.cover_image_url && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={mediaURL(event.cover_image_url)} alt="" className="mt-6 aspect-[16/8] w-full rounded-[0.7rem] object-cover" />
           )}
-          <article className="mt-8 max-w-none whitespace-pre-wrap text-[1.05rem] leading-relaxed">{event.description}</article>
+          <article className="mt-8 max-w-none whitespace-pre-wrap break-words text-[1.05rem] leading-relaxed">{event.description}</article>
           {event.gallery && event.gallery.length > 0 && (
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-6 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
               {event.gallery.map((url) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img key={url} src={mediaURL(url)} alt="" className="aspect-[4/3] w-full rounded-[0.7rem] object-cover" />
@@ -73,7 +80,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <dl className="mt-4 space-y-3 text-sm">
             <div><dt className="text-[var(--muted)]">সময়</dt><dd className="font-medium">{when(event.starts_at, event.timezone)}</dd></div>
             <div><dt className="text-[var(--muted)]">স্থান</dt><dd className="font-medium">{place(event)}</dd>{event.address && <dd>{event.address}</dd>}</div>
-            <div><dt className="text-[var(--muted)]">ফি</dt><dd className="font-medium">{money(event.fee_amount, event.currency)}</dd></div>
+            <div><dt className="text-[var(--muted)]">ফি</dt><dd className="font-medium">{feeSummary(event)}</dd></div>
             <div><dt className="text-[var(--muted)]">নিবন্ধিত</dt><dd className="font-medium">{event.registration_count.toLocaleString("bn-BD")}{event.capacity ? ` / ${event.capacity.toLocaleString("bn-BD")}` : ""}</dd></div>
           </dl>
           <EventGate slug={event.slug} open={open} />
@@ -89,7 +96,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {event.segments.map((segment) => (
               <article key={segment.id} className="card p-4">
-                <h3 className="text-lg font-semibold">{segment.name}</h3>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-lg font-semibold">{segment.name}</h3>
+                  <p className="shrink-0 text-sm font-semibold">{money(segment.fee_amount, event.currency)}</p>
+                </div>
                 <p className="mt-1 text-sm text-[var(--muted)]">{segment.description}</p>
                 <p className="mt-2 text-sm">{[when(segment.starts_at), segment.location, segment.eligibility].filter((part) => part && part !== "তারিখ পরে জানানো হবে").join(" · ")}</p>
               </article>

@@ -101,6 +101,8 @@ body {
 
 .field {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border-radius: 0.55rem;
   border: 1px solid var(--line);
   background: white;
@@ -125,4 +127,10 @@ a.card {
 
 a.card:hover {
   border-color: rgba(14, 107, 86, 0.35);
+}
+
+#qr-reader,
+#qr-reader video {
+  width: 100% !important;
+  max-width: 100%;
 }

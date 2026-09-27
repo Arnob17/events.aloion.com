@@ -7,7 +7,7 @@ import { AccountGate } from "@/components/account-gate";
 import { RegistrationCard } from "@/components/registration-card";
 import { TicketQR } from "@/components/ticket-qr";
 import { api } from "@/lib/api";
-import { personName } from "@/lib/format";
+import { money, personName } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import type { CustomField, PublicEvent, Registration } from "@/lib/types";
 
@@ -50,12 +50,13 @@ export default function RegisterPage() {
     return (
       <main className="mx-auto max-w-lg px-4 py-12 text-center">
         <p className="text-sm font-semibold text-[var(--pine)]">নাম লেখা হয়েছে</p>
-        <h1 className="serif mt-2 text-4xl">{event.title}</h1>
+        <h1 className="serif mt-2 break-words text-3xl sm:text-4xl">{event.title}</h1>
         <p className="mt-3 text-sm text-[var(--muted)]">{user.email}-এ নিশ্চিতকরণের চিঠি পাঠানো হয়েছে</p>
         <p className="mt-4 text-sm text-[var(--muted)]">নিবন্ধন নম্বর</p>
         <p className="font-mono text-2xl">{done.public_code}</p>
+        {done.amount_due > 0 && <p className="mt-3 text-lg font-semibold">মোট {money(done.amount_due, done.currency || event.currency)}</p>}
         {done.qr_token && <TicketQR token={done.qr_token} />}
-        <div className="mt-6 flex justify-center gap-2">
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link href={`/events/${event.slug}`} className="btn btn-ghost">ইভেন্টের পাতা</Link>
           <Link href={`/tickets/${done.public_code}`} className="btn btn-primary">টিকিট খুলুন</Link>
         </div>
@@ -64,6 +65,7 @@ export default function RegisterPage() {
   }
 
   const needsSegments = event.allow_segment_registration && event.segments.length > 0;
+  const mustPickSegment = needsSegments && event.segments.some((segment) => segment.registration_required);
   const needsQuestions = event.fields.length > 0 || (event.food_enabled && event.meals.length > 0);
   const steps: RegistrationStep[] = [
     ...(needsSegments ? (["segments"] as const) : []),
@@ -98,15 +100,15 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
       <p className="text-sm text-[var(--muted)]">{event.title}</p>
-      <h1 className="serif text-4xl">নাম লিখুন</h1>
-      <div className="card mt-4 flex items-center justify-between gap-3 p-4">
-        <div>
-          <p className="font-semibold">{personName(user)}</p>
-          <p className="text-sm text-[var(--muted)]">{user.email}</p>
+      <h1 className="serif text-3xl sm:text-4xl">নাম লিখুন</h1>
+      <div className="card mt-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold break-words">{personName(user)}</p>
+          <p className="text-sm break-all text-[var(--muted)]">{user.email}</p>
         </div>
-        <button className="btn btn-ghost !py-2" onClick={logout}>আপনি নন</button>
+        <button className="btn btn-ghost !py-2 w-full sm:w-auto" onClick={logout}>আপনি নন</button>
       </div>
-      <ol className="mt-4 flex gap-3 text-sm">
+      <ol className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-sm">
         {steps.map((label, index) => (
           <li key={label} className={index === step ? "font-semibold text-[var(--pine)]" : "text-[var(--muted)]"}>{index + 1}. {stepLabel[label]}</li>
         ))}
@@ -119,8 +121,11 @@ export default function RegisterPage() {
                 <input type="checkbox" checked={segments.includes(segment.id)} onChange={() => {
                   setSegments((currentIds) => currentIds.includes(segment.id) ? currentIds.filter((id) => id !== segment.id) : [...currentIds, segment.id]);
                 }} />
-                <span>
-                  <strong>{segment.name}</strong>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-start justify-between gap-3">
+                    <strong className="break-words">{segment.name}</strong>
+                    <span className="shrink-0 text-sm font-semibold">{money(segment.fee_amount, event.currency)}</span>
+                  </span>
                   <span className="block text-sm text-[var(--muted)]">{segment.description}</span>
                 </span>
               </label>
@@ -138,22 +143,50 @@ export default function RegisterPage() {
         {current === "review" && (
           <div className="space-y-2 text-sm">
             <p><strong>{personName(user)}</strong> · {user.email}</p>
-            <p>অংশ: {event.segments.filter((segment) => segments.includes(segment.id)).map((segment) => segment.name).join(", ") || "পুরো ইভেন্ট"}</p>
+            {segments.length === 0 && <p>অংশ: পুরো ইভেন্ট</p>}
+            <FeeSummary event={event} segmentIds={segments} />
             {event.food_enabled && <p>খাবার: {event.meals.find((meal) => meal.id === mealId)?.name || "—"}</p>}
             {event.fields.map((field) => <p key={field.id}>{field.label}: {answers[field.id]?.values?.join(", ") || answers[field.id]?.value || "—"}</p>)}
           </div>
         )}
+        {current !== "review" && <FeeSummary event={event} segmentIds={segments} />}
         {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-        <div className="mt-5 flex justify-between">
-          <button className="btn btn-ghost" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <button className="btn btn-ghost w-full sm:w-auto" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
           {current === "review" ? (
-            <button className="btn btn-primary" disabled={saving} onClick={submit}>{saving ? "জমা হচ্ছে…" : "নিবন্ধন নিশ্চিত করুন"}</button>
+            <button className="btn btn-primary w-full sm:w-auto" disabled={saving} onClick={submit}>{saving ? "জমা হচ্ছে…" : "নিবন্ধন নিশ্চিত করুন"}</button>
           ) : (
-            <button className="btn btn-primary" disabled={current === "questions" && event.food_enabled && event.meals.length > 0 && !mealId} onClick={() => setStep((value) => value + 1)}>এগোন</button>
+            <button className="btn btn-primary w-full sm:w-auto" disabled={(current === "questions" && event.food_enabled && event.meals.length > 0 && !mealId) || (current === "segments" && mustPickSegment && segments.length === 0)} onClick={() => setStep((value) => value + 1)}>এগোন</button>
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+function FeeSummary({ event, segmentIds }: { event: PublicEvent; segmentIds: number[] }) {
+  const selected = event.segments.filter((segment) => segmentIds.includes(segment.id));
+  const base = event.fee_amount || 0;
+  const total = base + selected.reduce((sum, segment) => sum + (segment.fee_amount || 0), 0);
+  return (
+    <div className="mt-4 rounded-xl bg-[var(--paper)] p-3 text-sm">
+      {selected.map((segment) => (
+        <p key={segment.id} className="flex justify-between gap-3">
+          <span className="min-w-0 break-words">{segment.name}</span>
+          <span className="shrink-0">{money(segment.fee_amount, event.currency)}</span>
+        </p>
+      ))}
+      {base > 0 && (
+        <p className="flex justify-between gap-3">
+          <span>মূল নিবন্ধন</span>
+          <span>{money(base, event.currency)}</span>
+        </p>
+      )}
+      <p className="mt-2 flex justify-between gap-3 border-t border-[var(--line)] pt-2 text-base font-semibold">
+        <span>মোট</span>
+        <span>{money(total, event.currency)}</span>
+      </p>
+    </div>
   );
 }
 

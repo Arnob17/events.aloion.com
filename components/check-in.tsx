@@ -78,9 +78,9 @@ export function CheckIn({ eventId }: { eventId: number }) {
   return (
     <div className="mx-auto max-w-md">
       <div id="qr-reader" className="overflow-hidden rounded-[1.1rem] bg-black" />
-      <form className="mt-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); lookup({ code }); }}>
-        <input className="field" placeholder="নিবন্ধন নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
-        <button className="btn btn-primary">খুঁজুন</button>
+      <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); lookup({ code }); }}>
+        <input className="field sm:min-w-0 sm:flex-1" placeholder="নিবন্ধন নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
+        <button className="btn btn-primary shrink-0">খুঁজুন</button>
       </form>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
       {result && (
@@ -92,7 +92,7 @@ export function CheckIn({ eventId }: { eventId: number }) {
           {result.segments && result.segments.length > 0 && (
             <ul className="mt-4 grid gap-2">
               {result.segments.map((segment) => (
-                <li key={segment.id} className="flex items-center justify-between gap-3 rounded-[0.7rem] bg-white px-3 py-3">
+                <li key={segment.id} className="flex flex-col gap-3 rounded-[0.7rem] bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">{segment.name}</p>
                     <p className="text-sm text-[var(--muted)]">

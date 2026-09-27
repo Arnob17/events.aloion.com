@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { CheckIn } from "@/components/check-in";
 import { api, mediaURL } from "@/lib/api";
 import { CATEGORIES, money, statusLabel, when } from "@/lib/format";
-import type { Registration, Workspace } from "@/lib/types";
+import type { Registration, Segment, Workspace } from "@/lib/types";
 
 const NAV = [
   ["", "সংক্ষেপ"],
@@ -53,13 +53,13 @@ export function EventDesk({ id, section }: { id: string; section: string }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-[var(--pine)]">{statusLabel(workspace.event.status)} · {workspace.role}</p>
-          <h1 className="serif text-4xl">{workspace.event.title}</h1>
+          <h1 className="serif break-words text-3xl sm:text-4xl">{workspace.event.title}</h1>
         </div>
         <Link href={`/events/${workspace.event.slug}`} className="text-sm underline">সবার পাতা</Link>
       </div>
       <nav className="mt-4 flex gap-2 overflow-x-auto pb-2 text-sm">
         {NAV.map(([key, label]) => (
-          <Link key={key} href={key ? `${base}/${key}` : base} className={`rounded-[0.7rem] px-3 py-2 ${section === key ? "bg-[var(--ink)] text-[var(--paper)] shadow-[0_8px_16px_-10px_rgba(28,25,21,0.7)]" : "bg-white"}`}>{label}</Link>
+          <Link key={key} href={key ? `${base}/${key}` : base} className={`shrink-0 rounded-[0.7rem] px-3 py-2 ${section === key ? "bg-[var(--ink)] text-[var(--paper)] shadow-[0_8px_16px_-10px_rgba(28,25,21,0.7)]" : "bg-white"}`}>{label}</Link>
         ))}
       </nav>
       {error && <p className="mt-3 text-red-700">{error}</p>}
@@ -95,7 +95,7 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
   }
   return (
     <div>
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="নিবন্ধন" value={counts.registrations} />
         <Stat label="নিশ্চিত" value={counts.confirmed} />
         <Stat label="হাজির" value={counts.checked_in} />
@@ -116,9 +116,19 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
       </ul>
       <div className="mt-6 space-y-2">
         {event.segments.map((segment) => (
-          <div key={segment.id} className="flex justify-between text-sm"><span>{segment.name}</span><span>{segment.registration_count || 0}</span></div>
+          <div key={segment.id} className="flex justify-between gap-3 text-sm"><span className="min-w-0 break-words">{segment.name}</span><span className="shrink-0">{money(segment.fee_amount, event.currency)} · {segment.registration_count || 0}</span></div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function RegistrationActions({ workspace, row, reload }: { workspace: Workspace; row: Registration; reload: () => Promise<void> }) {
+  if (!workspace.actions.includes("manage_registrations")) return null;
+  return (
+    <div className="flex flex-wrap gap-2 pt-1">
+      {row.status === "pending" && <button className="btn btn-ghost !py-2" onClick={() => api.setRegistration(workspace.event.id, row.public_code, "confirm").then(reload)}>নিশ্চিত</button>}
+      <button className="btn btn-ghost !py-2" onClick={() => api.setRegistration(workspace.event.id, row.public_code, "cancel").then(reload)}>বাতিল</button>
     </div>
   );
 }
@@ -140,29 +150,39 @@ function Registrations({ workspace, reload }: { workspace: Workspace; reload: ()
   }, [workspace.event.id, q, status]);
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
-        <input className="field max-w-xs" placeholder="নাম, ইমেইল, বা নম্বর" value={q} onChange={(event) => setQ(event.target.value)} />
-        <select className="field max-w-[12rem]" value={status} onChange={(event) => setStatus(event.target.value)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <input className="field sm:max-w-xs" placeholder="নাম, ইমেইল, বা নম্বর" value={q} onChange={(event) => setQ(event.target.value)} />
+        <select className="field sm:max-w-[12rem]" value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value="">সব অবস্থা</option>
           {["pending", "confirmed", "waitlisted", "checked_in", "cancelled", "rejected"].map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
         </select>
         {workspace.actions.includes("export") && <button className="btn btn-ghost" onClick={() => api.exportRegistrations(workspace.event.id)}>সিএসভি</button>}
       </div>
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead><tr className="text-[var(--muted)]"><th>নাম</th><th>নম্বর</th><th>ইমেইল</th><th>অংশ</th><th>অবস্থা</th><th></th></tr></thead>
+      <div className="mt-4 space-y-3 md:hidden">
+        {rows.map((row) => (
+          <article key={row.public_code} className="card space-y-1 p-4 text-sm">
+            <p className="font-semibold">{row.participant.first_name} {row.participant.last_name}</p>
+            <p className="font-mono break-all">{row.public_code}</p>
+            <p className="break-all text-[var(--muted)]">{row.participant.email}</p>
+            {row.segments.length > 0 && <p>{row.segments.map((segment) => segment.name).join(", ")}</p>}
+            <p>{statusLabel(row.status)}{row.checked_in_at ? " · হাজির" : ""}{row.amount_due > 0 ? ` · ${money(row.amount_due, row.currency || workspace.event.currency)}` : ""}</p>
+            <RegistrationActions workspace={workspace} row={row} reload={reload} />
+          </article>
+        ))}
+      </div>
+      <div className="mt-4 hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[40rem] text-left text-sm">
+          <thead><tr className="text-[var(--muted)]"><th className="py-2 pr-3">নাম</th><th className="pr-3">নম্বর</th><th className="pr-3">ইমেইল</th><th className="pr-3">অংশ</th><th className="pr-3">ফি</th><th className="pr-3">অবস্থা</th><th></th></tr></thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.public_code} className="border-t border-[var(--line)]">
-                <td className="py-2">{row.participant.first_name} {row.participant.last_name}</td>
-                <td className="font-mono">{row.public_code}</td>
-                <td>{row.participant.email}</td>
-                <td>{row.segments.map((segment) => segment.name).join(", ")}</td>
-                <td>{statusLabel(row.status)}{row.checked_in_at ? " · হাজির" : ""}</td>
-                <td className="space-x-2">
-                  {workspace.actions.includes("manage_registrations") && row.status === "pending" && <button onClick={() => api.setRegistration(workspace.event.id, row.public_code, "confirm").then(reload)}>নিশ্চিত</button>}
-                  {workspace.actions.includes("manage_registrations") && <button onClick={() => api.setRegistration(workspace.event.id, row.public_code, "cancel").then(reload)}>বাতিল</button>}
-                </td>
+                <td className="py-2 pr-3">{row.participant.first_name} {row.participant.last_name}</td>
+                <td className="pr-3 font-mono">{row.public_code}</td>
+                <td className="pr-3">{row.participant.email}</td>
+                <td className="pr-3">{row.segments.map((segment) => segment.name).join(", ")}</td>
+                <td className="pr-3">{money(row.amount_due || 0, row.currency || workspace.event.currency)}</td>
+                <td className="pr-3">{statusLabel(row.status)}{row.checked_in_at ? " · হাজির" : ""}</td>
+                <td><RegistrationActions workspace={workspace} row={row} reload={reload} /></td>
               </tr>
             ))}
           </tbody>
@@ -172,22 +192,56 @@ function Registrations({ workspace, reload }: { workspace: Workspace; reload: ()
   );
 }
 
+function localDateTime(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function Segments({ workspace, reload }: { workspace: Workspace; reload: () => Promise<void> }) {
+  const [editing, setEditing] = useState<Segment | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
   const [starts, setStarts] = useState("");
+  const [fee, setFee] = useState("");
+
+  function reset() {
+    setEditing(null);
+    setName("");
+    setDescription("");
+    setLocation("");
+    setCapacity("");
+    setStarts("");
+    setFee("");
+  }
+
+  function edit(segment: Segment) {
+    setEditing(segment);
+    setName(segment.name);
+    setDescription(segment.description || "");
+    setLocation(segment.location || "");
+    setCapacity(segment.capacity ? String(segment.capacity) : "");
+    setStarts(localDateTime(segment.starts_at));
+    setFee(segment.fee_amount ? String(segment.fee_amount) : "");
+  }
+
   return (
     <div className="space-y-3">
+      <p className="text-sm text-[var(--muted)]">প্রতিটি অংশের নিজস্ব প্রবেশ ফি দিন। শিক্ষার্থী যে অংশগুলো বেছে নেবে, সেগুলোর ফি যোগ হয়ে মোট দেখাবে।</p>
       {workspace.event.segments.map((segment) => (
-        <div key={segment.id} className="card flex items-center justify-between p-4">
-          <div>
-            <strong>{segment.name}</strong>
+        <div key={segment.id} className="card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <strong className="break-words">{segment.name}</strong>
             <p className="text-sm text-[var(--muted)]">{[segment.description, segment.location].filter(Boolean).join(" · ")}</p>
-            <p className="text-xs text-[var(--muted)]">{segment.registration_count || 0} জন{segment.capacity ? ` / ${segment.capacity}` : ""}</p>
+            <p className="text-xs text-[var(--muted)]">{money(segment.fee_amount, workspace.event.currency)} · {segment.registration_count || 0} জন{segment.capacity ? ` / ${segment.capacity}` : ""}</p>
           </div>
-          <button className="text-sm" onClick={() => api.deleteSegment(workspace.event.id, segment.id).then(reload)}>সরান</button>
+          <div className="flex shrink-0 gap-3">
+            <button className="text-sm" onClick={() => edit(segment)}>সম্পাদনা</button>
+            <button className="text-sm" onClick={() => api.deleteSegment(workspace.event.id, segment.id).then(reload)}>সরান</button>
+          </div>
         </div>
       ))}
       <form className="card grid gap-3 p-4" onSubmit={(event) => {
@@ -196,19 +250,26 @@ function Segments({ workspace, reload }: { workspace: Workspace; reload: () => P
           name,
           description,
           location,
+          eligibility: editing?.eligibility || "",
+          officials: editing?.officials || "",
           has_capacity: capacity !== "",
           capacity: Number(capacity) || undefined,
           starts_at: starts ? new Date(starts).toISOString() : undefined,
-        }).then(() => { setName(""); setDescription(""); setLocation(""); setCapacity(""); setStarts(""); reload(); });
+          fee_amount: Number(fee) || 0,
+        }, editing?.id).then(() => { reset(); reload(); });
       }}>
-        <input className="field" placeholder="বিজ্ঞান অলিম্পিয়াড" value={name} onChange={(event) => setName(event.target.value)} />
+        <input className="field" placeholder="প্রকল্প প্রদর্শনী" value={name} onChange={(event) => setName(event.target.value)} required />
         <input className="field" placeholder="এই অংশ কী" value={description} onChange={(event) => setDescription(event.target.value)} />
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <input className="field" placeholder="কক্ষ বা মঞ্চ" value={location} onChange={(event) => setLocation(event.target.value)} />
           <input className="field" type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} />
           <input className="field" placeholder="ধারণক্ষমতা" value={capacity} onChange={(event) => setCapacity(event.target.value)} />
+          <input className="field" inputMode="decimal" placeholder="প্রবেশ ফি, টাকায়" value={fee} onChange={(event) => setFee(event.target.value)} />
         </div>
-        <button className="btn btn-primary w-fit">অংশ যোগ</button>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-primary w-fit">{editing ? "অংশ আপডেট" : "অংশ যোগ"}</button>
+          {editing && <button className="btn btn-ghost w-fit" type="button" onClick={reset}>বাতিল</button>}
+        </div>
       </form>
     </div>
   );
@@ -222,7 +283,7 @@ function Fields({ workspace, reload }: { workspace: Workspace; reload: () => Pro
   return (
     <div className="space-y-3">
       {workspace.event.fields.map((field) => (
-        <div key={field.id} className="card flex justify-between p-4"><span>{field.label} · {field.field_type}</span><button onClick={() => api.deleteField(workspace.event.id, field.id).then(reload)}>সরান</button></div>
+        <div key={field.id} className="card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"><span className="min-w-0 break-words">{field.label} · {field.field_type}</span><button className="shrink-0 text-sm" onClick={() => api.deleteField(workspace.event.id, field.id).then(reload)}>সরান</button></div>
       ))}
       <form className="card grid gap-3 p-4" onSubmit={(event) => {
         event.preventDefault();
@@ -247,12 +308,12 @@ function Food({ workspace, reload }: { workspace: Workspace; reload: () => Promi
       <label className="text-sm"><input type="checkbox" checked={workspace.event.food_enabled} onChange={(event) => api.update(workspace.event.id, { food_enabled: event.target.checked }).then(reload)} /> খাবার থাকবে</label>
       <div className="mt-4 space-y-2">
         {workspace.event.meals.map((meal) => (
-          <div key={meal.id} className="card flex justify-between p-4"><span>{meal.name} · {meal.count || 0} জন</span><button onClick={() => api.deleteMeal(workspace.event.id, meal.id).then(reload)}>সরান</button></div>
+          <div key={meal.id} className="card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"><span className="min-w-0 break-words">{meal.name} · {meal.count || 0} জন</span><button className="shrink-0 text-sm" onClick={() => api.deleteMeal(workspace.event.id, meal.id).then(reload)}>সরান</button></div>
         ))}
       </div>
-      <form className="mt-3 flex gap-2" onSubmit={(event) => { event.preventDefault(); api.saveMeal(workspace.event.id, { name, category: "meal" }).then(() => { setName(""); reload(); }); }}>
-        <input className="field" placeholder="নিরামিষ দুপুর" value={name} onChange={(event) => setName(event.target.value)} />
-        <button className="btn btn-primary">খাবার যোগ</button>
+      <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); api.saveMeal(workspace.event.id, { name, category: "meal" }).then(() => { setName(""); reload(); }); }}>
+        <input className="field sm:min-w-0 sm:flex-1" placeholder="নিরামিষ দুপুর" value={name} onChange={(event) => setName(event.target.value)} />
+        <button className="btn btn-primary shrink-0">খাবার যোগ</button>
       </form>
     </div>
   );
@@ -266,16 +327,16 @@ function Gifts({ workspace, reload }: { workspace: Workspace; reload: () => Prom
     <div className="space-y-3">
       {workspace.items.map((item) => (
         <div key={item.id} className="card p-4">
-          <div className="flex justify-between"><strong>{item.name}</strong><span>{item.distributed}{item.quantity != null ? ` / ${item.quantity}` : ""} দেওয়া</span></div>
-          <form className="mt-2 flex gap-2" onSubmit={(event) => { event.preventDefault(); api.distribute(workspace.event.id, item.id, code).then(() => { setCode(""); reload(); }); }}>
-            <input className="field" placeholder="নিবন্ধন নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
-            <button className="btn btn-ghost">দেওয়া হয়েছে</button>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><strong className="break-words">{item.name}</strong><span>{item.distributed}{item.quantity != null ? ` / ${item.quantity}` : ""} দেওয়া</span></div>
+          <form className="mt-2 flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); api.distribute(workspace.event.id, item.id, code).then(() => { setCode(""); reload(); }); }}>
+            <input className="field sm:min-w-0 sm:flex-1" placeholder="নিবন্ধন নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
+            <button className="btn btn-ghost shrink-0">দেওয়া হয়েছে</button>
           </form>
         </div>
       ))}
-      <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); api.saveItem(workspace.event.id, { name, kind }).then(() => { setName(""); reload(); }); }}>
+      <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]" onSubmit={(event) => { event.preventDefault(); api.saveItem(workspace.event.id, { name, kind }).then(() => { setName(""); reload(); }); }}>
         <input className="field" placeholder="টি-শার্ট" value={name} onChange={(event) => setName(event.target.value)} />
-        <select className="field max-w-[10rem]" value={kind} onChange={(event) => setKind(event.target.value)}>
+        <select className="field" value={kind} onChange={(event) => setKind(event.target.value)}>
           {["tshirt", "certificate", "gift", "goodie", "prize", "other"].map((item) => <option key={item}>{item}</option>)}
         </select>
         <button className="btn btn-primary">জিনিস যোগ</button>
@@ -290,9 +351,9 @@ function Certificates({ workspace }: { workspace: Workspace }) {
   useEffect(() => { api.certificates(workspace.event.id).then((data) => setRows(data.certificates || [])).catch(() => undefined); }, [workspace.event.id]);
   return (
     <div>
-      <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); api.issueCertificate(workspace.event.id, code).then(() => api.certificates(workspace.event.id).then((data) => setRows(data.certificates || []))); }}>
-        <input className="field" placeholder="হাজির হওয়া নিবন্ধনের নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
-        <button className="btn btn-primary">ইস্যু</button>
+      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); api.issueCertificate(workspace.event.id, code).then(() => api.certificates(workspace.event.id).then((data) => setRows(data.certificates || []))); }}>
+        <input className="field sm:min-w-0 sm:flex-1" placeholder="হাজির হওয়া নিবন্ধনের নম্বর" value={code} onChange={(event) => setCode(event.target.value)} />
+        <button className="btn btn-primary shrink-0">ইস্যু</button>
       </form>
       <ul className="mt-4 space-y-2">{rows.map((row) => <li key={row.hash} className="card p-3">{row.recipient_name} · {row.title}</li>)}</ul>
     </div>
@@ -373,7 +434,7 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
           <input className="field" value={form.venue} onChange={(event) => set("venue", event.target.value)} placeholder="স্থান" />
           <input className="field" value={form.address} onChange={(event) => set("address", event.target.value)} placeholder="ঠিকানা" />
           <input className="field" value={form.online_url} onChange={(event) => set("online_url", event.target.value)} placeholder="অনলাইন লিংক" />
-          <input className="field" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} placeholder="ফি" />
+          <input className="field" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} placeholder="মূল নিবন্ধন ফি" />
           <input className="field" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} placeholder="ধারণক্ষমতা, খালি থাকলে সীমাহীন" />
           <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
             <option value="public">সবার জন্য</option>
@@ -388,7 +449,7 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
         </div>
         <div>
           <p className="text-sm">আরও ছবি</p>
-          <div className="mt-2 grid grid-cols-3 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {form.gallery.map((url) => (
               <div key={url} className="relative">
                 <img src={mediaURL(url)} alt="" className="aspect-[4/3] w-full rounded-[0.55rem] object-cover" />
@@ -401,21 +462,21 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
             <input className="mt-1 block" type="file" accept="image/*" onChange={(change) => { addImage(change.target.files?.[0], "gallery").catch((err: Error) => alert(err.message)); change.target.value = ""; }} />
           </label>
         </div>
-        <button className="btn btn-primary w-fit">সেটিংস সংরক্ষণ</button>
+        <button className="btn btn-primary w-full sm:w-fit">সেটিংস সংরক্ষণ</button>
       </form>
       <section className="card p-4">
         <h2 className="serif text-2xl">আয়োজক</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">ইমেইল বা ইউজারনেম দিলেই তিনি এখনই এই ইভেন্ট চালাতে পারবেন। আলাদা করে মেনে নিতে হবে না।</p>
         <ul className="mt-3 space-y-2">{workspace.organizers.map((member) => (
-          <li key={member.user_id} className="flex justify-between text-sm">
-            <span>{member.person.first_name} {member.person.last_name} · {statusLabel(member.role)}</span>
+          <li key={member.user_id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="min-w-0 break-words">{member.person.first_name} {member.person.last_name} · {statusLabel(member.role)}</span>
             {workspace.actions.includes("manage_organizers") && <button type="button" onClick={() => api.removeOrganizer(event.id, member.user_id).then(reload).catch((err: Error) => alert(err.message))}>সরান</button>}
           </li>
         ))}</ul>
         {workspace.actions.includes("manage_organizers") && (
           <div className="mt-3 flex flex-wrap gap-2">
-            <input className="field max-w-xs" placeholder="ইমেইল বা ইউজারনেম" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
-            <select className="field max-w-[10rem]" value={role} onChange={(event) => setRole(event.target.value)}>
+            <input className="field w-full sm:max-w-xs" placeholder="ইমেইল বা ইউজারনেম" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
+            <select className="field w-full sm:max-w-[10rem]" value={role} onChange={(event) => setRole(event.target.value)}>
               <option value="manager">ব্যবস্থাপক</option>
               <option value="scanner">চেক-ইন</option>
               <option value="owner">মালিক</option>

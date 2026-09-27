@@ -35,7 +35,7 @@ export default function DiscoverPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16">
       <header className="border-b border-[var(--line)] py-10">
-        <h1 className="serif text-5xl leading-tight">ইভেন্ট</h1>
+        <h1 className="serif text-4xl leading-tight sm:text-5xl">ইভেন্ট</h1>
         <p className="mt-3 max-w-xl text-lg text-[var(--muted)]">
           স্কুল, ক্লাব ও কমিউনিটির অনুষ্ঠান। আলোআয়ন অ্যাকাউন্টে নাম লিখুন। টিকিট, সময় ও অংশ এই পাতায় থাকবে।
         </p>
@@ -69,7 +69,7 @@ export default function DiscoverPage() {
           )}
           <div>
             <p className="text-sm text-[var(--pine)]">{metaLine(featured)}</p>
-            <h2 className="serif mt-1 text-4xl leading-tight">{featured.title}</h2>
+            <h2 className="serif mt-1 text-3xl leading-tight break-words sm:text-4xl">{featured.title}</h2>
             {featured.summary && <p className="mt-3 text-[var(--muted)]">{featured.summary}</p>}
             <p className="mt-4 text-sm">{whenDay(featured.starts_at, featured.timezone)} · {place(featured)}</p>
             <p className="mt-1 text-sm text-[var(--muted)]">{featured.registration_count.toLocaleString("bn-BD")} জন নিবন্ধিত</p>
@@ -99,7 +99,7 @@ function EventTile({ event }: { event: EventCard }) {
       )}
       <div className="p-4">
         <p className="text-sm text-[var(--pine)]">{metaLine(event)}</p>
-        <h3 className="serif mt-1 text-2xl leading-tight">{event.title}</h3>
+        <h3 className="serif mt-1 text-2xl leading-tight break-words">{event.title}</h3>
         <p className="mt-2 text-sm text-[var(--muted)]">{whenDay(event.starts_at, event.timezone)} · {place(event)}</p>
         <p className="mt-3 text-sm">{event.registration_count.toLocaleString("bn-BD")} জন নিবন্ধিত</p>
       </div>

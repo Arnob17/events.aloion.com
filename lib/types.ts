@@ -134,6 +134,8 @@ export interface Registration {
   public_code: string;
   status: string;
   payment_status: string;
+  amount_due: number;
+  currency?: string;
   registered_at: string;
   checked_in_at?: string | null;
   participant: Person;

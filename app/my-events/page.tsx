@@ -37,7 +37,7 @@ export default function MyEventsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="serif text-5xl">আমার ইভেন্ট</h1>
+      <h1 className="serif text-4xl sm:text-5xl">আমার ইভেন্ট</h1>
       <p className="mt-2 text-[var(--muted)]">{user.email} হিসেবে প্রবেশ করা। নিশ্চিতকরণের চিঠি এই ঠিকানায় যায়।</p>
       {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
       <Section title="আসছে" rows={upcoming} />

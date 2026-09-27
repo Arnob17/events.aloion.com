@@ -68,7 +68,7 @@ export default function NewEventPage() {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
-      <h1 className="serif text-5xl">ইভেন্ট তৈরি</h1>
+      <h1 className="serif text-4xl sm:text-5xl">ইভেন্ট তৈরি</h1>
       <p className="mt-2 text-sm text-[var(--muted)]">ধাপ {step + 1} / ৩</p>
       <div className="card mt-6 grid gap-3 p-5">
         {step === 0 && (
@@ -97,7 +97,7 @@ export default function NewEventPage() {
         {step === 2 && (
           <>
             <input className="field" placeholder="ধারণক্ষমতা" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
-            <input className="field" placeholder="ফি, বিনামূল্যে হলে ০" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
+            <input className="field" placeholder="মূল নিবন্ধন ফি, অংশের ফি আলাদা" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
             <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
               <option value="public">সবার জন্য</option>
               <option value="private">ব্যক্তিগত লিংক</option>
@@ -106,9 +106,9 @@ export default function NewEventPage() {
           </>
         )}
         {error && <p className="text-sm text-red-700">{error}</p>}
-        <div className="flex justify-between">
-          <button className="btn btn-ghost" type="button" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
-          {step < 2 ? <button className="btn btn-primary" type="button" onClick={() => setStep((value) => value + 1)}>এগোন</button> : <button className="btn btn-primary" type="button" onClick={create}>খসড়া তৈরি</button>}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+          <button className="btn btn-ghost w-full sm:w-auto" type="button" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
+          {step < 2 ? <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={() => setStep((value) => value + 1)}>এগোন</button> : <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={create}>খসড়া তৈরি</button>}
         </div>
       </div>
     </main>

@@ -11,6 +11,6 @@ export function TicketQR({ token }: { token: string }) {
   if (!src) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt="Ticket QR code" className="mx-auto mt-4 rounded-2xl bg-white p-3" />
+    <img src={src} alt="Ticket QR code" className="mx-auto mt-4 h-auto max-w-full rounded-2xl bg-white p-3" />
   );
 }
