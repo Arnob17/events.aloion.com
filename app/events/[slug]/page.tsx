@@ -9,8 +9,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 function feeSummary(event: PublicEvent) {
   const priced = event.segments?.some((segment) => segment.fee_amount > 0);
-  if (priced && event.fee_amount > 0) return `${money(event.fee_amount, event.currency)} + অংশের ফি`;
-  if (priced) return "অংশ অনুযায়ী";
+  if (priced && event.fee_amount > 0) return `${money(event.fee_amount, event.currency)} + সেগমেন্টের ফি`;
+  if (priced) return "সেগমেন্ট অনুযায়ী";
   return money(event.fee_amount, event.currency);
 }
 
@@ -79,9 +79,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <p className="text-sm font-semibold text-[var(--pine)]">{statusLabel(event.status)}</p>
           <dl className="mt-4 space-y-3 text-sm">
             <div><dt className="text-[var(--muted)]">সময়</dt><dd className="font-medium">{when(event.starts_at, event.timezone)}</dd></div>
-            <div><dt className="text-[var(--muted)]">স্থান</dt><dd className="font-medium">{place(event)}</dd>{event.address && <dd>{event.address}</dd>}</div>
+            <div><dt className="text-[var(--muted)]">লোকেশন</dt><dd className="font-medium">{place(event)}</dd>{event.address && <dd>{event.address}</dd>}</div>
             <div><dt className="text-[var(--muted)]">ফি</dt><dd className="font-medium">{feeSummary(event)}</dd></div>
-            <div><dt className="text-[var(--muted)]">নিবন্ধিত</dt><dd className="font-medium">{event.registration_count.toLocaleString("bn-BD")}{event.capacity ? ` / ${event.capacity.toLocaleString("bn-BD")}` : ""}</dd></div>
+            <div><dt className="text-[var(--muted)]">রেজিস্টার্ড</dt><dd className="font-medium">{event.registration_count.toLocaleString("bn-BD")}{event.capacity ? ` / ${event.capacity.toLocaleString("bn-BD")}` : ""}</dd></div>
           </dl>
           <EventGate slug={event.slug} open={open} />
           {(event.contact_email || event.contact_phone) && (
@@ -92,7 +92,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
       {event.segments?.length > 0 && (
         <section className="mt-12">
-          <h2 className="serif text-3xl">অংশ</h2>
+          <h2 className="serif text-3xl">সেগমেন্ট</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {event.segments.map((segment) => (
               <article key={segment.id} className="card p-4">
@@ -108,10 +108,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </section>
       )}
 
-      {event.rules && <section className="mt-12"><h2 className="serif text-3xl">নিয়ম</h2><p className="mt-3 whitespace-pre-wrap">{event.rules}</p></section>}
+      {event.rules && <section className="mt-12"><h2 className="serif text-3xl">রুলস</h2><p className="mt-3 whitespace-pre-wrap">{event.rules}</p></section>}
       {event.faq?.length > 0 && (
         <section className="mt-12">
-          <h2 className="serif text-3xl">প্রশ্নোত্তর</h2>
+          <h2 className="serif text-3xl">এফএকিউ</h2>
           <div className="mt-4 space-y-4">
             {event.faq.map((item) => (
               <div key={item.question}><h3 className="font-semibold">{item.question}</h3><p className="text-[var(--muted)]">{item.answer}</p></div>

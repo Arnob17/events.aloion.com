@@ -39,7 +39,7 @@ export default function RegisterPage() {
     return (
       <main className="mx-auto max-w-lg px-4 py-16">
         <p className="mb-4 text-sm text-[var(--muted)]">{event.title}</p>
-        <AccountGate title="আলোআয়ন দিয়ে নাম লিখুন" body="আলোআয়ন অ্যাকাউন্ট ব্যবহার করুন, যাতে নিশ্চিতকরণের চিঠি আর এই নিবন্ধন একসঙ্গে থাকে।" />
+        <AccountGate title="আলোআয়ন দিয়ে রেজিস্ট্রেশন" body="আলোআয়ন অ্যাকাউন্ট ব্যবহার করুন, যাতে কনফার্মেশনের চিঠি আর এই রেজিস্ট্রেশন একসঙ্গে থাকে।" />
       </main>
     );
   }
@@ -53,13 +53,13 @@ export default function RegisterPage() {
   if (done) {
     return (
       <main className="mx-auto max-w-lg px-4 py-12 text-center">
-        <p className="text-sm font-semibold text-[var(--pine)]">নাম লেখা হয়েছে</p>
+        <p className="text-sm font-semibold text-[var(--pine)]">রেজিস্ট্রেশন হয়েছে</p>
         <h1 className="serif mt-2 break-words text-3xl sm:text-4xl">{event.title}</h1>
-        <p className="mt-3 text-sm text-[var(--muted)]">{user.email}-এ নিশ্চিতকরণের চিঠি পাঠানো হয়েছে</p>
-        <p className="mt-4 text-sm text-[var(--muted)]">নিবন্ধন নম্বর</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">{user.email}-এ কনফার্মেশনের চিঠি পাঠানো হয়েছে</p>
+        <p className="mt-4 text-sm text-[var(--muted)]">রেজিস্ট্রেশন নম্বর</p>
         <p className="font-mono text-2xl">{done.public_code}</p>
         {done.amount_due > 0 && <p className="mt-3 text-lg font-semibold">মোট {money(done.amount_due, done.currency || event.currency)}</p>}
-        {done.transaction_id && <p className="mt-2 text-sm">ট্রানজাকশন আইডি <span className="font-mono">{done.transaction_id}</span>. আয়োজক মিলিয়ে নিবন্ধন গ্রহণ করবেন।</p>}
+        {done.transaction_id && <p className="mt-2 text-sm">ট্রানজাকশন আইডি <span className="font-mono">{done.transaction_id}</span>. অর্গানাইজার মিলিয়ে রেজিস্ট্রেশন অ্যাকসেপ্ট করবেন।</p>}
         {done.qr_token && <TicketQR token={done.qr_token} />}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Link href={`/events/${event.slug}`} className="btn btn-ghost">ইভেন্টের পাতা</Link>
@@ -80,7 +80,7 @@ export default function RegisterPage() {
     ...(needsPay ? (["payment"] as const) : []),
     "review",
   ];
-  const stepLabel: Record<RegistrationStep, string> = { segments: "অংশ", questions: "প্রশ্ন", payment: "পেমেন্ট", review: "যাচাই" };
+  const stepLabel: Record<RegistrationStep, string> = { segments: "সেগমেন্ট", questions: "প্রশ্ন", payment: "পেমেন্ট", review: "রিভিউ" };
   const current = steps[step] || "review";
 
   async function submit() {
@@ -101,7 +101,7 @@ export default function RegisterPage() {
       });
       setDone(registration);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "নিবন্ধন হয়নি");
+      setError(err instanceof Error ? err.message : "রেজিস্ট্রেশন হয়নি");
     } finally {
       setSaving(false);
     }
@@ -110,7 +110,7 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
       <p className="text-sm text-[var(--muted)]">{event.title}</p>
-      <h1 className="serif text-3xl sm:text-4xl">নাম লিখুন</h1>
+      <h1 className="serif text-3xl sm:text-4xl">রেজিস্ট্রেশন</h1>
       <div className="card mt-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="font-semibold break-words">{personName(user)}</p>
@@ -156,7 +156,7 @@ export default function RegisterPage() {
         {current === "review" && (
           <div className="space-y-2 text-sm">
             <p><strong>{personName(user)}</strong> · {user.email}</p>
-            {segments.length === 0 && <p>অংশ: পুরো ইভেন্ট</p>}
+            {segments.length === 0 && <p>সেগমেন্ট: পুরো ইভেন্ট</p>}
             <FeeSummary event={event} segmentIds={segments} />
             {needsPay && <p>পেমেন্ট: {PAY_METHODS.find((item) => item.id === method)?.label || "—"} · ট্রানজাকশন আইডি {trx.trim() || "—"}</p>}
             {event.food_enabled && <p>খাবার: {event.meals.find((meal) => meal.id === mealId)?.name || "—"}</p>}
@@ -168,7 +168,7 @@ export default function RegisterPage() {
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <button className="btn btn-ghost w-full sm:w-auto" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
           {current === "review" ? (
-            <button className="btn btn-primary w-full sm:w-auto" disabled={saving} onClick={submit}>{saving ? "জমা হচ্ছে…" : "নিবন্ধন নিশ্চিত করুন"}</button>
+            <button className="btn btn-primary w-full sm:w-auto" disabled={saving} onClick={submit}>{saving ? "সাবমিট হচ্ছে…" : "রেজিস্ট্রেশন কনফার্ম করুন"}</button>
           ) : (
             <button className="btn btn-primary w-full sm:w-auto" disabled={(current === "questions" && event.food_enabled && event.meals.length > 0 && !mealId) || (current === "segments" && mustPickSegment && segments.length === 0) || (current === "payment" && (!method || !trx.trim()))} onClick={() => setStep((value) => value + 1)}>এগোন</button>
           )}
@@ -197,7 +197,7 @@ function FeeSummary({ event, segmentIds }: { event: PublicEvent; segmentIds: num
       ))}
       {base > 0 && (
         <p className="flex justify-between gap-3">
-          <span>মূল নিবন্ধন</span>
+          <span>মূল রেজিস্ট্রেশন</span>
           <span>{money(base, event.currency)}</span>
         </p>
       )}
@@ -226,7 +226,7 @@ function PaymentStep({ event, total, method, trx, onMethod, onTrx }: { event: Pu
       {method && (
         <div className="rounded-xl bg-[var(--paper)] p-4">
           <p className="text-sm text-[var(--muted)]">{wallet?.label} এ এই নম্বরে টাকা পাঠান</p>
-          {number ? <p className="mt-1 font-mono text-2xl tracking-wide">{number}</p> : <p className="mt-1 text-sm">আয়োজক এখনও {wallet?.label} নম্বর দেননি।</p>}
+          {number ? <p className="mt-1 font-mono text-2xl">{number}</p> : <p className="mt-1 text-sm">অর্গানাইজার এখনও {wallet?.label} নম্বর দেননি।</p>}
         </div>
       )}
       <FieldLabel label="ট্রানজাকশন আইডি">

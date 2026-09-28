@@ -26,14 +26,14 @@ export function EventGate({ slug, open }: { slug: string; open: boolean }) {
     return (
       <div className="mt-5">
         <AccountGate
-          title="আলোআয়ন দিয়ে নাম লিখুন"
-          body="নাম লিখতে প্রবেশ করুন। তারপর এই পাতায় টিকিট, অংশ, খাবার ও সময় থাকবে।"
+          title="আলোআয়ন দিয়ে রেজিস্ট্রেশন"
+          body="রেজিস্ট্রেশন করতে লগইন করুন। তারপর এই পাতায় টিকিট, সেগমেন্ট, খাবার ও সময় থাকবে।"
         />
       </div>
     );
   }
 
-  if (!open) return <p className="mt-5 text-sm text-[var(--muted)]">নিবন্ধন এখন খোলা নেই।</p>;
+  if (!open) return <p className="mt-5 text-sm text-[var(--muted)]">রেজিস্ট্রেশন এখন খোলা নেই।</p>;
 
-  return <Link href={`/events/${slug}/register`} className="btn btn-primary mt-5 w-full">এখনই নাম লিখুন</Link>;
+  return <Link href={`/events/${slug}/register`} className="btn btn-primary mt-5 w-full">এখনই রেজিস্ট্রেশন করুন</Link>;
 }

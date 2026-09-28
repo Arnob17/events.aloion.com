@@ -26,7 +26,7 @@ export default function MyEventsPage() {
   if (!user) {
     return (
       <main className="mx-auto max-w-lg px-4 py-16">
-        <AccountGate title="আপনার ইভেন্ট" body="আলোআয়ন দিয়ে প্রবেশ করুন। যেসব ইভেন্টে নাম লিখেছেন, কোন অংশে, কখন হবে, সেটা এখানে দেখা যাবে।" />
+        <AccountGate title="আপনার ইভেন্ট" body="আলোআয়ন দিয়ে লগইন করুন। যেসব ইভেন্টে রেজিস্ট্রেশন করেছেন, কোন সেগমেন্টে, কখন হবে, সেটা এখানে দেখা যাবে।" />
       </main>
     );
   }
@@ -38,12 +38,12 @@ export default function MyEventsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="serif text-4xl sm:text-5xl">আমার ইভেন্ট</h1>
-      <p className="mt-2 text-[var(--muted)]">{user.email} হিসেবে প্রবেশ করা। নিশ্চিতকরণের চিঠি এই ঠিকানায় যায়।</p>
+      <p className="mt-2 text-[var(--muted)]">{user.email} হিসেবে লগইন করা। কনফার্মেশনের চিঠি এই ইমেইলে যায়।</p>
       {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
       <Section title="আসছে" rows={upcoming} />
       <Section title="আগের" rows={past} />
       <section className="mt-10">
-        <h2 className="serif text-3xl">সনদ</h2>
+        <h2 className="serif text-3xl">সার্টিফিকেট</h2>
         <div className="mt-3 space-y-2">
           {certificates.map((cert) => (
             <Link key={cert.hash} href={`/certificates/${cert.hash}`} className="card block p-4">
@@ -51,7 +51,7 @@ export default function MyEventsPage() {
               <p className="text-sm text-[var(--muted)]">{cert.event_title}</p>
             </Link>
           ))}
-          {certificates.length === 0 && <p className="text-[var(--muted)]">আয়োজক সনদ দিলে সেটা এখানে দেখা যাবে।</p>}
+          {certificates.length === 0 && <p className="text-[var(--muted)]">অর্গানাইজার সার্টিফিকেট দিলে সেটা এখানে দেখা যাবে।</p>}
         </div>
       </section>
     </main>

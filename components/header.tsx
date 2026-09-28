@@ -9,9 +9,9 @@ import { personName } from "@/lib/format";
 import type { User } from "@/lib/types";
 
 const LINKS = [
-  ["/", "খুঁজুন"],
+  ["/", "সার্চ"],
   ["/my-events", "আমার ইভেন্ট"],
-  ["/organizer", "আয়োজন"],
+  ["/organizer", "অর্গানাইজ"],
 ] as const;
 
 export function Header() {
@@ -67,7 +67,7 @@ function SiteLinks({ user, stacked = false }: { user: User | null; stacked?: boo
       {LINKS.map(([href, label]) => (
         <Link key={href} className={item} href={href}>{label}</Link>
       ))}
-      {user?.role === "admin" && <Link className={item} href="/admin/events">পর্যালোচনা</Link>}
+      {user?.role === "admin" && <Link className={item} href="/admin/events">রিভিউ</Link>}
     </>
   );
 }
@@ -75,7 +75,7 @@ function SiteLinks({ user, stacked = false }: { user: User | null; stacked?: boo
 function AccountSlot({ loading, user, login, logout, stacked = false }: { loading: boolean; user: User | null; login: (next?: string) => void; logout: () => void; stacked?: boolean }) {
   if (loading) return null;
   if (user) return <UserChip user={user} onClick={logout} wide={stacked} />;
-  return <button className={`btn btn-primary !py-2 ${stacked ? "w-full" : ""}`} onClick={() => login()}>প্রবেশ</button>;
+  return <button className={`btn btn-primary !py-2 ${stacked ? "w-full" : ""}`} onClick={() => login()}>লগইন</button>;
 }
 
 function UserChip({ user, onClick, wide = false }: { user: User; onClick: () => void; wide?: boolean }) {

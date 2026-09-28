@@ -127,6 +127,11 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  setRegistrationSegments: (id: number, code: string, segmentIds: number[]) =>
+    request<Registration>(`/events/${id}/registrations/${encodeURIComponent(code)}/segments`, {
+      method: "PATCH",
+      body: JSON.stringify({ segment_ids: segmentIds }),
+    }),
   validate: (id: number, body: object) =>
     request<ScanResult>(`/events/${id}/check-ins/validate`, { method: "POST", body: JSON.stringify(body) }),
   checkIn: (id: number, body: object) =>

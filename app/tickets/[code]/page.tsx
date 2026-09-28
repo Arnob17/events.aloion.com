@@ -22,13 +22,13 @@ export default function TicketPage() {
   }, [code, user, loading]);
 
   async function cancel() {
-    if (!ticket || !confirm("এই নিবন্ধন বাতিল করবেন?")) return;
+    if (!ticket || !confirm("এই রেজিস্ট্রেশন ক্যান্সেল করবেন?")) return;
     setCancelling(true);
     try {
       await api.cancelMine(ticket.public_code);
       setTicket({ ...ticket, status: "cancelled" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "বাতিল হয়নি");
+      setError(err instanceof Error ? err.message : "ক্যান্সেল হয়নি");
     } finally {
       setCancelling(false);
     }
@@ -38,7 +38,7 @@ export default function TicketPage() {
   if (!user) {
     return (
       <main className="mx-auto max-w-lg px-4 py-16">
-        <AccountGate title="আপনার টিকিট" body="যে আলোআয়ন অ্যাকাউন্ট দিয়ে নাম লিখেছেন, সেটি দিয়ে প্রবেশ করুন। তারপর এই পাতায় পাস দেখা যাবে।" />
+        <AccountGate title="আপনার টিকিট" body="যে আলোআয়ন অ্যাকাউন্ট দিয়ে রেজিস্ট্রেশন করেছেন, সেটি দিয়ে লগইন করুন। তারপর এই পাতায় পাস দেখা যাবে।" />
       </main>
     );
   }
@@ -51,7 +51,7 @@ export default function TicketPage() {
         <>
           <RegistrationCard registration={ticket} showTicketLink={false} />
           {ticket.status !== "cancelled" && ticket.status !== "checked_in" && (
-            <button className="btn btn-ghost mt-4" disabled={cancelling} onClick={cancel}>নিবন্ধন বাতিল</button>
+            <button className="btn btn-ghost mt-4" disabled={cancelling} onClick={cancel}>রেজিস্ট্রেশন ক্যান্সেল</button>
           )}
           <Link href="/my-events" className="mt-4 block text-center text-sm underline">আমার সব ইভেন্ট</Link>
         </>

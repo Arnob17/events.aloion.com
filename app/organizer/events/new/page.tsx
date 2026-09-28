@@ -74,23 +74,23 @@ export default function NewEventPage() {
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
       <h1 className="serif text-4xl sm:text-5xl">ইভেন্ট তৈরি</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">ধাপ {step + 1} / ৩</p>
+      <p className="mt-2 text-sm text-[var(--muted)]">স্টেপ {step + 1} / ৩</p>
       <div className="card mt-6 grid gap-3 p-5">
         {step === 0 && (
           <>
             <FieldLabel label="নাম">
               <input className="field" placeholder="বিজ্ঞান উৎসব ২০২৬" value={form.title} onChange={(event) => set("title", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="এক লাইনে">
+            <FieldLabel label="সামারি">
               <textarea className="field" value={form.summary} onChange={(event) => set("summary", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="কী হবে">
+            <FieldLabel label="ডিসক্রিপশন">
               <textarea className="field min-h-28" value={form.description} onChange={(event) => set("description", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="বিভাগ">
+            <FieldLabel label="ক্যাটাগরি">
               <select className="field" value={form.category} onChange={(event) => set("category", event.target.value)}>{CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
             </FieldLabel>
-            <FieldLabel label="আয়োজক সংগঠন">
+            <FieldLabel label="অর্গানাইজেশন">
               <input className="field" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
             </FieldLabel>
           </>
@@ -103,17 +103,17 @@ export default function NewEventPage() {
             <FieldLabel label="শেষ">
               <input className="field" type="datetime-local" value={form.ends_at} onChange={(event) => set("ends_at", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="ধরন">
+            <FieldLabel label="টাইপ">
               <select className="field" value={form.location_type} onChange={(event) => set("location_type", event.target.value)}>
-                <option value="physical">সশরীরে</option>
+                <option value="physical">ফিজিক্যাল</option>
                 <option value="online">অনলাইন</option>
-                <option value="hybrid">মিশ্র</option>
+                <option value="hybrid">হাইব্রিড</option>
               </select>
             </FieldLabel>
-            <FieldLabel label="স্থান">
+            <FieldLabel label="ভেন্যু">
               <input className="field" value={form.venue} onChange={(event) => set("venue", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="ঠিকানা">
+            <FieldLabel label="অ্যাড্রেস">
               <input className="field" value={form.address} onChange={(event) => set("address", event.target.value)} />
             </FieldLabel>
             <FieldLabel label="অনলাইন লিংক">
@@ -123,11 +123,11 @@ export default function NewEventPage() {
         )}
         {step === 2 && (
           <>
-            <FieldLabel label="ধারণক্ষমতা">
-              <input className="field" placeholder="খালি থাকলে সীমাহীন" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
+            <FieldLabel label="ক্যাপাসিটি">
+              <input className="field" placeholder="খালি থাকলে আনলিমিটেড" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="মূল নিবন্ধন ফি">
-              <input className="field" inputMode="decimal" placeholder="অংশের ফি আলাদা" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
+            <FieldLabel label="মূল রেজিস্ট্রেশন ফি">
+              <input className="field" inputMode="decimal" placeholder="সেগমেন্টের ফি আলাদা" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
             </FieldLabel>
             <FieldLabel label="বিকাশ নম্বর">
               <input className="field" inputMode="tel" placeholder="০১XXXXXXXXX" value={form.bkash_number} onChange={(event) => set("bkash_number", event.target.value)} />
@@ -135,19 +135,19 @@ export default function NewEventPage() {
             <FieldLabel label="নগদ নম্বর">
               <input className="field" inputMode="tel" placeholder="০১XXXXXXXXX" value={form.nagad_number} onChange={(event) => set("nagad_number", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="দৃশ্যমানতা">
+            <FieldLabel label="ভিজিবিলিটি">
               <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
-                <option value="public">সবার জন্য</option>
-                <option value="private">ব্যক্তিগত লিংক</option>
+                <option value="public">পাবলিক</option>
+                <option value="private">প্রাইভেট লিংক</option>
               </select>
             </FieldLabel>
-            <p className="text-sm text-[var(--muted)]">ইভেন্ট খসড়া হিসেবে শুরু হবে। এরপর অংশ ও প্রশ্ন যোগ করে জমা দিন বা প্রকাশ করুন।</p>
+            <p className="text-sm text-[var(--muted)]">ইভেন্ট ড্রাফট হিসেবে শুরু হবে। এরপর সেগমেন্ট ও প্রশ্ন যোগ করে সাবমিট দিন বা পাবলিশ করুন।</p>
           </>
         )}
         {error && <p className="text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <button className="btn btn-ghost w-full sm:w-auto" type="button" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
-          {step < 2 ? <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={() => setStep((value) => value + 1)}>এগোন</button> : <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={create}>খসড়া তৈরি</button>}
+          {step < 2 ? <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={() => setStep((value) => value + 1)}>পরের স্টেপ</button> : <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={create}>ড্রাফট তৈরি</button>}
         </div>
       </div>
     </main>

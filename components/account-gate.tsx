@@ -22,7 +22,7 @@ export function AccountGate({ title, body }: { title: string; body: string }) {
         <button className="btn btn-primary" onClick={() => login(dest || undefined)}><AloionMark />আলোআয়ন দিয়ে চালিয়ে যান</button>
         <a className="btn btn-ghost" href={dest ? aloionRegisterURL(dest) : "#"}><AloionMark />আলোআয়ন অ্যাকাউন্ট খুলুন</a>
       </div>
-      <p className="mt-4 text-sm text-[var(--muted)]">প্রবেশ বা অ্যাকাউন্ট খোলার পর আপনি এই পাতায় ফিরে আসবেন। নিশ্চিতকরণের চিঠি সেই ইমেইলে যাবে।</p>
+      <p className="mt-4 text-sm text-[var(--muted)]">লগইন বা অ্যাকাউন্ট খোলার পর আপনি এই পাতায় ফিরে আসবেন। কনফার্মেশনের চিঠি সেই ইমেইলে যাবে।</p>
     </div>
   );
 }

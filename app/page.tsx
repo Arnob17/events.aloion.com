@@ -38,31 +38,31 @@ export default function DiscoverPage() {
       <header className="border-b border-[var(--line)] py-10">
         <h1 className="serif text-4xl leading-tight sm:text-5xl">ইভেন্ট</h1>
         <p className="mt-3 max-w-xl text-lg text-[var(--muted)]">
-          স্কুল, ক্লাব ও কমিউনিটির অনুষ্ঠান। আলোআয়ন অ্যাকাউন্টে নাম লিখুন। টিকিট, সময় ও অংশ এই পাতায় থাকবে।
+          স্কুল, ক্লাব ও কমিউনিটির ইভেন্ট। আলোআয়ন অ্যাকাউন্টে রেজিস্ট্রেশন করুন। টিকিট, সময় ও সেগমেন্ট এই পাতায় থাকবে।
         </p>
         <form className="mt-6 grid items-end gap-2 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(event) => event.preventDefault()}>
-          <FieldLabel label="ইভেন্ট খুঁজুন">
+          <FieldLabel label="ইভেন্ট সার্চ">
             <input className="field" value={q} onChange={(event) => setQ(event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="বিভাগ">
+          <FieldLabel label="ক্যাটাগরি">
             <select className="field" value={category} onChange={(event) => setCategory(event.target.value)}>
-              <option value="">সব বিভাগ</option>
+              <option value="">সব ক্যাটাগরি</option>
               {CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
           </FieldLabel>
-          <FieldLabel label="জায়গা">
+          <FieldLabel label="লোকেশন">
             <select className="field" value={location} onChange={(event) => setLocation(event.target.value)}>
-              <option value="">যেকোনো জায়গা</option>
-              <option value="physical">সশরীরে</option>
+              <option value="">যেকোনো লোকেশন</option>
+              <option value="physical">ফিজিক্যাল</option>
               <option value="online">অনলাইন</option>
-              <option value="hybrid">মিশ্র</option>
+              <option value="hybrid">হাইব্রিড</option>
             </select>
           </FieldLabel>
-          <FieldLabel label="নিবন্ধন">
+          <FieldLabel label="রেজিস্ট্রেশন">
             <select className="field" value={registration} onChange={(event) => setRegistration(event.target.value)}>
-              <option value="">সব নিবন্ধন</option>
-              <option value="open">নিবন্ধন চলছে</option>
-              <option value="closed">নিবন্ধন বন্ধ</option>
+              <option value="">সব রেজিস্ট্রেশন</option>
+              <option value="open">রেজিস্ট্রেশন চলছে</option>
+              <option value="closed">রেজিস্ট্রেশন বন্ধ</option>
             </select>
           </FieldLabel>
         </form>
@@ -81,7 +81,7 @@ export default function DiscoverPage() {
             <h2 className="serif mt-1 text-3xl leading-tight break-words sm:text-4xl">{featured.title}</h2>
             {featured.summary && <p className="mt-3 text-[var(--muted)]">{featured.summary}</p>}
             <p className="mt-4 text-sm">{whenDay(featured.starts_at, featured.timezone)} · {place(featured)}</p>
-            <p className="mt-1 text-sm text-[var(--muted)]">{featured.registration_count.toLocaleString("bn-BD")} জন নিবন্ধিত</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">{featured.registration_count.toLocaleString("bn-BD")} জন রেজিস্টার্ড</p>
           </div>
         </Link>
       )}
@@ -94,7 +94,7 @@ export default function DiscoverPage() {
           </div>
         </section>
       )}
-      {loaded && events.length === 0 && <p className="pt-8 text-[var(--muted)]">এই খোঁজে কোনো ইভেন্ট নেই।</p>}
+      {loaded && events.length === 0 && <p className="pt-8 text-[var(--muted)]">এই সার্চে কোনো ইভেন্ট নেই।</p>}
     </main>
   );
 }
@@ -110,7 +110,7 @@ function EventTile({ event }: { event: EventCard }) {
         <p className="text-sm text-[var(--pine)]">{metaLine(event)}</p>
         <h3 className="serif mt-1 text-2xl leading-tight break-words">{event.title}</h3>
         <p className="mt-2 text-sm text-[var(--muted)]">{whenDay(event.starts_at, event.timezone)} · {place(event)}</p>
-        <p className="mt-3 text-sm">{event.registration_count.toLocaleString("bn-BD")} জন নিবন্ধিত</p>
+        <p className="mt-3 text-sm">{event.registration_count.toLocaleString("bn-BD")} জন রেজিস্টার্ড</p>
       </div>
     </Link>
   );

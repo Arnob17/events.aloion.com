@@ -13,18 +13,18 @@ async function load(hash: string) {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ hash: string }> }): Promise<Metadata> {
-  return { title: "সনদ", robots: { index: false, follow: false } };
+  return { title: "সার্টিফিকেট", robots: { index: false, follow: false } };
 }
 
 export default async function CertificatePage({ params }: { params: Promise<{ hash: string }> }) {
   const { hash } = await params;
   const certificate = await load(hash);
   if (!certificate) {
-    return <main className="mx-auto max-w-lg px-4 py-16"><h1 className="serif text-4xl">সনদ পাওয়া যায়নি</h1></main>;
+    return <main className="mx-auto max-w-lg px-4 py-16"><h1 className="serif text-4xl">সার্টিফিকেট পাওয়া যায়নি</h1></main>;
   }
   return (
     <main className="mx-auto max-w-lg px-4 py-16 text-center">
-      <p className="text-sm font-medium text-[var(--pine)]">যাচাই করা আলোআয়ন সনদ</p>
+      <p className="text-sm font-medium text-[var(--pine)]">ভেরিফাই করা আলোআয়ন সার্টিফিকেট</p>
       <h1 className="serif mt-3 text-4xl">{certificate.title}</h1>
       <p className="mt-4 text-xl">{certificate.recipient_name}</p>
       <p className="text-[var(--muted)]">{certificate.event_title}</p>

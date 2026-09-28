@@ -10,26 +10,26 @@ import { CATEGORIES, money, statusLabel, when } from "@/lib/format";
 import type { Registration, Segment, Workspace } from "@/lib/types";
 
 const NAV = [
-  ["", "সংক্ষেপ"],
-  ["registrations", "নিবন্ধন"],
+  ["", "সামারি"],
+  ["registrations", "রেজিস্ট্রেশন"],
   ["check-in", "চেক-ইন"],
-  ["segments", "অংশ"],
+  ["segments", "সেগমেন্ট"],
   ["fields", "প্রশ্ন"],
   ["food", "খাবার"],
-  ["gifts", "উপহার"],
-  ["certificates", "সনদ"],
+  ["gifts", "গিফট"],
+  ["certificates", "সার্টিফিকেট"],
   ["settings", "সেটিংস"],
 ] as const;
 
 const ACTION_LABELS: Record<string, [string, string]> = {
-  submit: ["অনুমোদনের জন্য জমা", "submit"],
-  publish: ["প্রকাশ", "publish"],
-  open_registration: ["নিবন্ধন খুলুন", "registration/open"],
-  close_registration: ["নিবন্ধন বন্ধ", "registration/close"],
+  submit: ["অ্যাপ্রুভের জন্য সাবমিট", "submit"],
+  publish: ["পাবলিশ", "publish"],
+  open_registration: ["রেজিস্ট্রেশন খুলুন", "registration/open"],
+  close_registration: ["রেজিস্ট্রেশন বন্ধ", "registration/close"],
   start: ["চলছে", "start"],
   complete: ["শেষ", "complete"],
-  cancel: ["ইভেন্ট বাতিল", "cancel"],
-  reopen: ["খসড়ায় ফেরান", "reopen"],
+  cancel: ["ইভেন্ট ক্যান্সেল", "cancel"],
+  reopen: ["ড্রাফটে ফেরান", "reopen"],
 };
 
 export function EventDesk({ id, section }: { id: string; section: string }) {
@@ -65,7 +65,7 @@ export function EventDesk({ id, section }: { id: string; section: string }) {
         ))}
       </nav>
       {error && <p className="mt-3 text-red-700">{error}</p>}
-      {workspace.review_note && <p className="mt-3 rounded-[0.7rem] bg-amber-50 p-3 text-sm">পর্যালোচনা: {workspace.review_note}</p>}
+      {workspace.review_note && <p className="mt-3 rounded-[0.7rem] bg-amber-50 p-3 text-sm">রিভিউ: {workspace.review_note}</p>}
       <div className="mt-4">
         {section === "" && <Overview workspace={workspace} reload={reload} />}
         {section === "registrations" && <Registrations workspace={workspace} reload={reload} />}
@@ -87,7 +87,7 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
   async function run(action: string) {
     if (action === "approve") await api.approve(event.id);
     else if (action === "reject") {
-      const note = window.prompt("আয়োজক কী বদলাবেন?") || "";
+      const note = window.prompt("অর্গানাইজার কী বদলাবেন?") || "";
       await api.reject(event.id, note);
     } else {
       const path = ACTION_LABELS[action]?.[1];
@@ -98,10 +98,10 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
   return (
     <div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="নিবন্ধন" value={counts.registrations} />
-        <Stat label="নিশ্চিত" value={counts.confirmed} />
-        <Stat label="হাজির" value={counts.checked_in} />
-        <Stat label="উপস্থিতি" value={`${attendance}%`} />
+        <Stat label="রেজিস্ট্রেশন" value={counts.registrations} />
+        <Stat label="কনফার্মড" value={counts.confirmed} />
+        <Stat label="চেক-ইন" value={counts.checked_in} />
+        <Stat label="অ্যাটেনডেন্স" value={`${attendance}%`} />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {workspace.actions.filter((action) => ACTION_LABELS[action] || action === "approve" || action === "reject").map((action) => (
@@ -111,10 +111,10 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
         ))}
       </div>
       <ul className="mt-6 space-y-2 text-sm">
-        <li>{workspace.checklist.has_description ? "বিবরণ আছে" : "সেটিংসে বিবরণ যোগ করুন"}</li>
-        <li>{workspace.checklist.has_schedule ? when(event.starts_at, event.timezone) : "প্রকাশের আগে শুরুর তারিখ দিন"}</li>
-        <li>{workspace.checklist.has_location ? "স্থান আছে" : "স্থান বা অনলাইন লিংক দিন"}</li>
-        <li>ধারণক্ষমতা {counts.capacity ?? "সীমাহীন"} · ফি {money(event.fee_amount, event.currency)}</li>
+        <li>{workspace.checklist.has_description ? "ডিসক্রিপশন আছে" : "সেটিংসে ডিসক্রিপশন যোগ করুন"}</li>
+        <li>{workspace.checklist.has_schedule ? when(event.starts_at, event.timezone) : "পাবলিশের আগে শুরুর তারিখ দিন"}</li>
+        <li>{workspace.checklist.has_location ? "ভেন্যু আছে" : "ভেন্যু বা অনলাইন লিংক দিন"}</li>
+        <li>ক্যাপাসিটি {counts.capacity ?? "আনলিমিটেড"} · ফি {money(event.fee_amount, event.currency)}</li>
       </ul>
       <div className="mt-6 space-y-2">
         {event.segments.map((segment) => (
@@ -127,10 +127,69 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
 
 function RegistrationActions({ workspace, row, reload }: { workspace: Workspace; row: Registration; reload: () => Promise<void> }) {
   if (!workspace.actions.includes("manage_registrations")) return null;
+  const canAccept = row.status === "pending" || row.status === "waitlisted" || row.status === "cancelled";
+  const canCancel = row.status === "pending" || row.status === "confirmed" || row.status === "waitlisted";
+  const acceptLabel = row.status === "cancelled" ? "আবার অ্যাকসেপ্ট" : row.transaction_id ? "মিলিয়ে অ্যাকসেপ্ট" : "কনফার্ম";
   return (
-    <div className="flex flex-wrap gap-2 pt-1">
-      {row.status === "pending" && <button className="btn btn-ghost !py-2" onClick={() => api.setRegistration(workspace.event.id, row.public_code, "confirm").then(reload)}>{row.transaction_id ? "মিলিয়ে গ্রহণ" : "নিশ্চিত"}</button>}
-      <button className="btn btn-ghost !py-2" onClick={() => api.setRegistration(workspace.event.id, row.public_code, "cancel").then(reload)}>বাতিল</button>
+    <div className="flex flex-col items-start gap-2 pt-1">
+      <div className="flex flex-wrap gap-2">
+        {canAccept && (
+          <button className="btn btn-ghost !py-2" onClick={() => api.setRegistration(workspace.event.id, row.public_code, "confirm").then(reload).catch((err: Error) => alert(err.message))}>
+            {acceptLabel}
+          </button>
+        )}
+        {canCancel && (
+          <button className="btn btn-ghost !py-2" onClick={() => api.setRegistration(workspace.event.id, row.public_code, "cancel").then(reload).catch((err: Error) => alert(err.message))}>
+            ক্যান্সেল
+          </button>
+        )}
+      </div>
+      {workspace.event.segments.length > 0 && <SegmentEditor workspace={workspace} row={row} reload={reload} />}
+    </div>
+  );
+}
+
+function SegmentEditor({ workspace, row, reload }: { workspace: Workspace; row: Registration; reload: () => Promise<void> }) {
+  const segments = workspace.event.segments;
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<number[]>(() => row.segments.map((segment) => segment.id));
+  const [saving, setSaving] = useState(false);
+
+  function toggle(id: number) {
+    setPicked((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.setRegistrationSegments(workspace.event.id, row.public_code, picked);
+      setOpen(false);
+      await reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "সেগমেন্ট বদলানো যায়নি");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <button type="button" className="btn btn-ghost !py-2" onClick={() => {
+        setPicked(row.segments.map((segment) => segment.id));
+        setOpen((value) => !value);
+      }}>সেগমেন্ট বদলান</button>
+      {open && (
+        <div className="mt-2 min-w-52 space-y-2 rounded-[0.7rem] bg-[var(--paper)] p-3">
+          <p className="text-xs text-[var(--muted)]">যে সেগমেন্টগুলো রাখতে চান সেগুলোতে টিক দিন। ফি সেই অনুযায়ী বদলাবে।</p>
+          {segments.map((segment) => (
+            <label key={segment.id} className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-1" checked={picked.includes(segment.id)} onChange={() => toggle(segment.id)} />
+              <span className="min-w-0 break-words">{segment.name}{segment.fee_amount > 0 ? ` · ${money(segment.fee_amount, workspace.event.currency)}` : ""}</span>
+            </label>
+          ))}
+          <button type="button" className="btn btn-primary !py-2" disabled={saving} onClick={save}>{saving ? "সেভ হচ্ছে…" : "সেগমেন্ট সেভ"}</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -158,12 +217,12 @@ function Registrations({ workspace, reload }: { workspace: Workspace; reload: ()
   return (
     <div>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-        <FieldLabel label="খুঁজুন" className="sm:max-w-xs sm:flex-1">
+        <FieldLabel label="সার্চ" className="sm:max-w-xs sm:flex-1">
           <input className="field" placeholder="নাম, ইমেইল, নম্বর, বা ট্রানজাকশন আইডি" value={q} onChange={(event) => setQ(event.target.value)} />
         </FieldLabel>
-        <FieldLabel label="অবস্থা" className="sm:max-w-[12rem]">
+        <FieldLabel label="স্ট্যাটাস" className="sm:max-w-[12rem]">
           <select className="field" value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">সব অবস্থা</option>
+            <option value="">সব স্ট্যাটাস</option>
             {["pending", "confirmed", "waitlisted", "checked_in", "cancelled", "rejected"].map((item) => <option key={item} value={item}>{statusLabel(item)}</option>)}
           </select>
         </FieldLabel>
@@ -184,7 +243,7 @@ function Registrations({ workspace, reload }: { workspace: Workspace; reload: ()
       </div>
       <div className="mt-4 hidden overflow-x-auto md:block">
         <table className="w-full min-w-[52rem] text-left text-sm">
-          <thead><tr className="text-[var(--muted)]"><th className="py-2 pr-3">নাম</th><th className="pr-3">নম্বর</th><th className="pr-3">ইমেইল</th><th className="pr-3">অংশ</th><th className="pr-3">ফি</th><th className="pr-3">ট্রানজাকশন আইডি</th><th className="pr-3">অবস্থা</th><th></th></tr></thead>
+          <thead><tr className="text-[var(--muted)]"><th className="py-2 pr-3">নাম</th><th className="pr-3">নম্বর</th><th className="pr-3">ইমেইল</th><th className="pr-3">সেগমেন্ট</th><th className="pr-3">ফি</th><th className="pr-3">ট্রানজাকশন আইডি</th><th className="pr-3">স্ট্যাটাস</th><th></th></tr></thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.public_code} className="border-t border-[var(--line)]">
@@ -257,7 +316,7 @@ function Segments({ workspace, reload }: { workspace: Workspace; reload: () => P
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-[var(--muted)]">প্রতিটি অংশের নিজস্ব প্রবেশ ফি দিন। শিক্ষার্থী যে অংশগুলো বেছে নেবে, সেগুলোর ফি যোগ হয়ে মোট দেখাবে।</p>
+      <p className="text-sm text-[var(--muted)]">প্রতিটি সেগমেন্টের নিজস্ব এন্ট্রি ফি দিন। শিক্ষার্থী যে সেগমেন্টগুলো বেছে নেবে, সেগুলোর ফি যোগ হয়ে মোট দেখাবে।</p>
       {workspace.event.segments.map((segment) => (
         <div key={segment.id} className="card flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
@@ -266,7 +325,7 @@ function Segments({ workspace, reload }: { workspace: Workspace; reload: () => P
             <p className="text-xs text-[var(--muted)]">{money(segment.fee_amount, workspace.event.currency)} · {segment.registration_count || 0} জন{segment.capacity ? ` / ${segment.capacity}` : ""}</p>
           </div>
           <div className="flex shrink-0 gap-3">
-            <button className="text-sm" onClick={() => edit(segment)}>সম্পাদনা</button>
+            <button className="text-sm" onClick={() => edit(segment)}>এডিট</button>
             <button className="text-sm" onClick={() => api.deleteSegment(workspace.event.id, segment.id).then(reload)}>সরান</button>
           </div>
         </div>
@@ -285,28 +344,28 @@ function Segments({ workspace, reload }: { workspace: Workspace; reload: () => P
           fee_amount: Number(fee) || 0,
         }, editing?.id).then(() => { reset(); reload(); });
       }}>
-        <FieldLabel label="অংশের নাম">
+        <FieldLabel label="সেগমেন্টের নাম">
           <input className="field" placeholder="প্রকল্প প্রদর্শনী" value={name} onChange={(event) => setName(event.target.value)} required />
         </FieldLabel>
-        <FieldLabel label="বিবরণ">
-          <input className="field" placeholder="এই অংশ কী" value={description} onChange={(event) => setDescription(event.target.value)} />
+        <FieldLabel label="ডিসক্রিপশন">
+          <input className="field" placeholder="এই সেগমেন্ট কী" value={description} onChange={(event) => setDescription(event.target.value)} />
         </FieldLabel>
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <FieldLabel label="স্থান">
+          <FieldLabel label="ভেন্যু">
             <input className="field" placeholder="কক্ষ বা মঞ্চ" value={location} onChange={(event) => setLocation(event.target.value)} />
           </FieldLabel>
           <FieldLabel label="শুরু">
             <input className="field" type="datetime-local" value={starts} onChange={(event) => setStarts(event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="ধারণক্ষমতা">
-            <input className="field" placeholder="খালি থাকলে সীমাহীন" value={capacity} onChange={(event) => setCapacity(event.target.value)} />
+          <FieldLabel label="ক্যাপাসিটি">
+            <input className="field" placeholder="খালি থাকলে আনলিমিটেড" value={capacity} onChange={(event) => setCapacity(event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="প্রবেশ ফি, টাকায়">
+          <FieldLabel label="এন্ট্রি ফি, টাকায়">
             <input className="field" inputMode="decimal" placeholder="০" value={fee} onChange={(event) => setFee(event.target.value)} />
           </FieldLabel>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="btn btn-primary w-fit">{editing ? "অংশ আপডেট" : "অংশ যোগ"}</button>
+          <button className="btn btn-primary w-fit">{editing ? "সেগমেন্ট আপডেট" : "সেগমেন্ট যোগ"}</button>
           {editing && <button className="btn btn-ghost w-fit" type="button" onClick={reset}>বাতিল</button>}
         </div>
       </form>
@@ -331,7 +390,7 @@ function Fields({ workspace, reload }: { workspace: Workspace; reload: () => Pro
         <FieldLabel label="প্রশ্ন">
           <input className="field" placeholder="শিক্ষাপ্রতিষ্ঠান" value={label} onChange={(event) => setLabel(event.target.value)} />
         </FieldLabel>
-        <FieldLabel label="ধরন">
+        <FieldLabel label="টাইপ">
           <select className="field" value={fieldType} onChange={(event) => setFieldType(event.target.value)}>
             {["text", "long_text", "number", "email", "phone", "date", "dropdown", "multi_select", "radio", "checkbox", "file"].map((type) => <option key={type}>{type}</option>)}
           </select>
@@ -339,7 +398,7 @@ function Fields({ workspace, reload }: { workspace: Workspace; reload: () => Pro
         <FieldLabel label="অপশন">
           <input className="field" placeholder="কমা দিয়ে লিখুন" value={options} onChange={(event) => setOptions(event.target.value)} />
         </FieldLabel>
-        <label className="text-sm"><input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} /> বাধ্যতামূলক</label>
+        <label className="text-sm"><input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} /> রিকোয়ার্ড</label>
         <button className="btn btn-primary">প্রশ্ন যোগ</button>
       </form>
     </div>
@@ -376,7 +435,7 @@ function Gifts({ workspace, reload }: { workspace: Workspace; reload: () => Prom
         <div key={item.id} className="card p-4">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><strong className="break-words">{item.name}</strong><span>{item.distributed}{item.quantity != null ? ` / ${item.quantity}` : ""} দেওয়া</span></div>
           <form className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); api.distribute(workspace.event.id, item.id, code).then(() => { setCode(""); reload(); }); }}>
-            <FieldLabel label="নিবন্ধন নম্বর" className="sm:min-w-0 sm:flex-1">
+            <FieldLabel label="রেজিস্ট্রেশন নম্বর" className="sm:min-w-0 sm:flex-1">
               <input className="field" value={code} onChange={(event) => setCode(event.target.value)} />
             </FieldLabel>
             <button className="btn btn-ghost shrink-0">দেওয়া হয়েছে</button>
@@ -384,15 +443,15 @@ function Gifts({ workspace, reload }: { workspace: Workspace; reload: () => Prom
         </div>
       ))}
       <form className="grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_auto]" onSubmit={(event) => { event.preventDefault(); api.saveItem(workspace.event.id, { name, kind }).then(() => { setName(""); reload(); }); }}>
-        <FieldLabel label="জিনিসের নাম">
+        <FieldLabel label="আইটেমের নাম">
           <input className="field" placeholder="টি-শার্ট" value={name} onChange={(event) => setName(event.target.value)} />
         </FieldLabel>
-        <FieldLabel label="ধরন">
+        <FieldLabel label="টাইপ">
           <select className="field" value={kind} onChange={(event) => setKind(event.target.value)}>
             {["tshirt", "certificate", "gift", "goodie", "prize", "other"].map((item) => <option key={item}>{item}</option>)}
           </select>
         </FieldLabel>
-        <button className="btn btn-primary">জিনিস যোগ</button>
+        <button className="btn btn-primary">আইটেম যোগ</button>
       </form>
     </div>
   );
@@ -405,8 +464,8 @@ function Certificates({ workspace }: { workspace: Workspace }) {
   return (
     <div>
       <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); api.issueCertificate(workspace.event.id, code).then(() => api.certificates(workspace.event.id).then((data) => setRows(data.certificates || []))); }}>
-        <FieldLabel label="নিবন্ধন নম্বর" className="sm:min-w-0 sm:flex-1">
-          <input className="field" placeholder="হাজির হওয়া নিবন্ধন" value={code} onChange={(event) => setCode(event.target.value)} />
+        <FieldLabel label="রেজিস্ট্রেশন নম্বর" className="sm:min-w-0 sm:flex-1">
+          <input className="field" placeholder="চেক-ইন হওয়া রেজিস্ট্রেশন" value={code} onChange={(event) => setCode(event.target.value)} />
         </FieldLabel>
         <button className="btn btn-primary shrink-0">ইস্যু</button>
       </form>
@@ -474,20 +533,20 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
         <FieldLabel label="নাম">
           <input className="field" value={form.title} onChange={(event) => set("title", event.target.value)} />
         </FieldLabel>
-        <FieldLabel label="সংক্ষিপ্ত বিবরণ">
+        <FieldLabel label="সামারি">
           <textarea className="field" value={form.summary} onChange={(event) => set("summary", event.target.value)} />
         </FieldLabel>
-        <FieldLabel label="পুরো বিবরণ">
+        <FieldLabel label="ডিসক্রিপশন">
           <textarea className="field min-h-32" value={form.description} onChange={(event) => set("description", event.target.value)} />
         </FieldLabel>
         <div className="grid gap-3 md:grid-cols-2">
-          <FieldLabel label="বিভাগ">
+          <FieldLabel label="ক্যাটাগরি">
             <select className="field" value={form.category} onChange={(event) => set("category", event.target.value)}>
-              <option value="">বিভাগ</option>
+              <option value="">ক্যাটাগরি</option>
               {CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
           </FieldLabel>
-          <FieldLabel label="সংগঠন">
+          <FieldLabel label="অর্গানাইজেশন">
             <input className="field" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
           </FieldLabel>
           <FieldLabel label="শুরু">
@@ -496,26 +555,26 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
           <FieldLabel label="শেষ">
             <input className="field" value={form.ends_at} type="datetime-local" onChange={(event) => set("ends_at", event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="ধরন">
+          <FieldLabel label="টাইপ">
             <select className="field" value={form.location_type} onChange={(event) => set("location_type", event.target.value)}>
-              <option value="physical">সশরীরে</option>
+              <option value="physical">ফিজিক্যাল</option>
               <option value="online">অনলাইন</option>
-              <option value="hybrid">মিশ্র</option>
+              <option value="hybrid">হাইব্রিড</option>
             </select>
           </FieldLabel>
-          <FieldLabel label="সময় অঞ্চল">
+          <FieldLabel label="টাইমজোন">
             <input className="field" value={form.timezone} onChange={(event) => set("timezone", event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="স্থান">
+          <FieldLabel label="ভেন্যু">
             <input className="field" value={form.venue} onChange={(event) => set("venue", event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="ঠিকানা">
+          <FieldLabel label="অ্যাড্রেস">
             <input className="field" value={form.address} onChange={(event) => set("address", event.target.value)} />
           </FieldLabel>
           <FieldLabel label="অনলাইন লিংক">
             <input className="field" value={form.online_url} onChange={(event) => set("online_url", event.target.value)} />
           </FieldLabel>
-          <FieldLabel label="মূল নিবন্ধন ফি">
+          <FieldLabel label="মূল রেজিস্ট্রেশন ফি">
             <input className="field" inputMode="decimal" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
           </FieldLabel>
           <FieldLabel label="বিকাশ নম্বর">
@@ -524,25 +583,25 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
           <FieldLabel label="নগদ নম্বর">
             <input className="field" inputMode="tel" value={form.nagad_number} onChange={(event) => set("nagad_number", event.target.value)} placeholder="০১XXXXXXXXX" />
           </FieldLabel>
-          <FieldLabel label="ধারণক্ষমতা">
-            <input className="field" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} placeholder="খালি থাকলে সীমাহীন" />
+          <FieldLabel label="ক্যাপাসিটি">
+            <input className="field" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} placeholder="খালি থাকলে আনলিমিটেড" />
           </FieldLabel>
-          <FieldLabel label="দৃশ্যমানতা">
+          <FieldLabel label="ভিজিবিলিটি">
             <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
-              <option value="public">সবার জন্য</option>
-              <option value="private">ব্যক্তিগত</option>
+              <option value="public">পাবলিক</option>
+              <option value="private">প্রাইভেট</option>
             </select>
           </FieldLabel>
-          <FieldLabel label="কোডের আগের অংশ">
+          <FieldLabel label="কোড প্রিফিক্স">
             <input className="field" value={form.code_prefix} onChange={(event) => set("code_prefix", event.target.value)} />
           </FieldLabel>
         </div>
-        <FieldLabel label="নিয়ম">
+        <FieldLabel label="রুলস">
           <textarea className="field" value={form.rules} onChange={(event) => set("rules", event.target.value)} />
         </FieldLabel>
         <div className="grid gap-4 md:grid-cols-2">
-          <ImageField label="প্রচ্ছদ" hint="তালিকা ও ইভেন্টের মূল ছবি" url={form.cover_image_url} onFile={(file) => addImage(file, "cover")} onClear={() => set("cover_image_url", "")} />
-          <ImageField label="পটভূমি" hint="ইভেন্ট পাতার উপরের বড় ছবি" url={form.background_image_url} onFile={(file) => addImage(file, "background")} onClear={() => set("background_image_url", "")} />
+          <ImageField label="কভার" hint="লিস্ট ও ইভেন্টের মূল ছবি" url={form.cover_image_url} onFile={(file) => addImage(file, "cover")} onClear={() => set("cover_image_url", "")} />
+          <ImageField label="ব্যাকগ্রাউন্ড" hint="ইভেন্ট পাতার উপরের বড় ছবি" url={form.background_image_url} onFile={(file) => addImage(file, "background")} onClear={() => set("background_image_url", "")} />
         </div>
         <div>
           <p className="text-sm">আরও ছবি</p>
@@ -559,11 +618,11 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
             <input className="mt-1 block" type="file" accept="image/*" onChange={(change) => { addImage(change.target.files?.[0], "gallery").catch((err: Error) => alert(err.message)); change.target.value = ""; }} />
           </label>
         </div>
-        <button className="btn btn-primary w-full sm:w-fit">সেটিংস সংরক্ষণ</button>
+        <button className="btn btn-primary w-full sm:w-fit">সেটিংস সেভ</button>
       </form>
       <section className="card p-4">
-        <h2 className="serif text-2xl">আয়োজক</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">ইমেইল বা ইউজারনেম দিলেই তিনি এখনই এই ইভেন্ট চালাতে পারবেন। আলাদা করে মেনে নিতে হবে না।</p>
+        <h2 className="serif text-2xl">অর্গানাইজার</h2>
+        <p className="mt-1 text-sm text-[var(--muted)]">ইমেইল বা ইউজারনেম দিলেই তিনি এখনই এই ইভেন্ট চালাতে পারবেন। আলাদা করে অ্যাকসেপ্ট করতে হবে না।</p>
         <ul className="mt-3 space-y-2">{workspace.organizers.map((member) => (
           <li key={member.user_id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
             <span className="min-w-0 break-words">{member.person.first_name} {member.person.last_name} · {statusLabel(member.role)}</span>
@@ -575,17 +634,17 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
             <FieldLabel label="ইমেইল বা ইউজারনেম" className="w-full sm:max-w-xs">
               <input className="field" value={identifier} onChange={(event) => setIdentifier(event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="ভূমিকা" className="w-full sm:max-w-[10rem]">
+            <FieldLabel label="রোল" className="w-full sm:max-w-[10rem]">
             <select className="field" value={role} onChange={(event) => setRole(event.target.value)}>
-              <option value="manager">ব্যবস্থাপক</option>
+              <option value="manager">ম্যানেজার</option>
               <option value="scanner">চেক-ইন</option>
-              <option value="owner">মালিক</option>
+              <option value="owner">ওনার</option>
             </select>
             </FieldLabel>
             <button type="button" className="btn btn-primary" onClick={() => {
               api.addOrganizer(event.id, identifier, role).then(() => {
                 setIdentifier("");
-                setStaffNote("যোগ করা হয়েছে। তিনি এখনই আয়োজন করতে পারবেন।");
+                setStaffNote("যোগ করা হয়েছে। তিনি এখনই অর্গানাইজ করতে পারবেন।");
                 return reload();
               }).catch((err: Error) => setStaffNote(err.message));
             }}>যোগ করুন</button>

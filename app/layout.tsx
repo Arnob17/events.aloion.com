@@ -20,7 +20,7 @@ const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
 export const metadata: Metadata = {
   metadataBase: new URL(site),
   title: { default: "আলোআয়ন ইভেন্ট", template: "%s · আলোআয়ন ইভেন্ট" },
-  description: "আলোআয়নের ইভেন্ট খুঁজুন, নাম লিখুন, এবং আয়োজন করুন।",
+  description: "আলোআয়নের ইভেন্ট সার্চ করুন, রেজিস্ট্রেশন করুন, এবং অর্গানাইজ করুন।",
   robots: { index: true, follow: true },
 };
 

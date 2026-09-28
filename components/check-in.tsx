@@ -36,7 +36,7 @@ export function CheckIn({ eventId }: { eventId: number }) {
       ).then(() => {
         if (cancelled && node) return stopScanner(node);
       }).catch(() => {
-        if (!cancelled) setError("ক্যামেরার অনুমতি লাগবে। নিবন্ধন নম্বর দিয়েও খোঁজা যায়।");
+        if (!cancelled) setError("ক্যামেরার পারমিশন লাগবে। রেজিস্ট্রেশন নম্বর দিয়েও সার্চ করা যায়।");
       });
     }, 0);
     return () => {
@@ -53,7 +53,7 @@ export function CheckIn({ eventId }: { eventId: number }) {
       setResult(await api.validate(eventId, body));
       paused.current = true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "খোঁজা যায়নি");
+      setError(err instanceof Error ? err.message : "সার্চ হয়নি");
     }
   }
 
@@ -80,10 +80,10 @@ export function CheckIn({ eventId }: { eventId: number }) {
     <div className="mx-auto max-w-md">
       <div id="qr-reader" className="overflow-hidden rounded-[1.1rem] bg-black" />
       <form className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); lookup({ code }); }}>
-        <FieldLabel label="নিবন্ধন নম্বর" className="sm:min-w-0 sm:flex-1">
+        <FieldLabel label="রেজিস্ট্রেশন নম্বর" className="sm:min-w-0 sm:flex-1">
           <input className="field" value={code} onChange={(event) => setCode(event.target.value)} />
         </FieldLabel>
-        <button className="btn btn-primary shrink-0">খুঁজুন</button>
+        <button className="btn btn-primary shrink-0">সার্চ</button>
       </form>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
       {result && (
@@ -105,7 +105,7 @@ export function CheckIn({ eventId }: { eventId: number }) {
                   </div>
                   {canAttend && result.registration_code && (
                     segment.done ? (
-                      <button className="btn btn-ghost !py-2" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.undo(eventId, result.registration_code!, segment.id))}>ফেরান</button>
+                      <button className="btn btn-ghost !py-2" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.undo(eventId, result.registration_code!, segment.id))}>আনডু</button>
                     ) : (
                       <button className="btn btn-primary !py-2" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.checkIn(eventId, { code: result.registration_code, segment_id: segment.id }))}>হয়ে গেছে</button>
                     )
@@ -119,7 +119,7 @@ export function CheckIn({ eventId }: { eventId: number }) {
               <button className="btn btn-primary" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.checkIn(eventId, { code: result.registration_code }))}>হাজির</button>
             )}
             {result.result === "already_checked_in" && result.registration_code && (
-              <button className="btn btn-ghost" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.undo(eventId, result.registration_code!))}>হাজিরা ফেরান</button>
+              <button className="btn btn-ghost" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.undo(eventId, result.registration_code!))}>চেক-ইন আনডু</button>
             )}
             <button className="btn btn-ghost" onClick={() => { setResult(null); paused.current = false; }}>পরের জন</button>
           </div>
@@ -144,10 +144,10 @@ function labelFor(result: string) {
     case "valid": return "টিকিট ঠিক আছে";
     case "checked_in": return "চেক-ইন হয়েছে";
     case "already_checked_in": return "আগেই হাজির";
-    case "cancelled": return "নিবন্ধন বাতিল";
-    case "rejected": return "নিবন্ধন প্রত্যাখ্যাত";
+    case "cancelled": return "রেজিস্ট্রেশন ক্যান্সেল";
+    case "rejected": return "রেজিস্ট্রেশন রিজেক্টেড";
     case "pending": return "পেমেন্ট এখনো বাকি";
-    case "waitlisted": return "অপেক্ষমাণ তালিকা";
-    default: return "নিবন্ধন পাওয়া যায়নি";
+    case "waitlisted": return "ওয়েটলিস্ট";
+    default: return "রেজিস্ট্রেশন পাওয়া যায়নি";
   }
 }

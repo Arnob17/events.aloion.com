@@ -10,7 +10,7 @@ export function RegistrationCard({ registration, compact = false, showTicketLink
   return (
     <article className="card overflow-hidden">
       <div className="bg-[var(--ink)] px-5 py-5 text-[var(--paper)]">
-        <p className="text-sm text-[var(--gold)]">আপনার নিবন্ধন</p>
+        <p className="text-sm text-[var(--gold)]">আপনার রেজিস্ট্রেশন</p>
         <h2 className="serif mt-1 break-words text-2xl sm:text-3xl">{registration.event_title || "ইভেন্ট"}</h2>
         <p className="mt-2 text-sm text-white/75">{when(registration.event_starts_at)}{registration.event_ends_at ? ` – ${when(registration.event_ends_at)}` : ""}</p>
         <p className="text-sm text-white/75">{place({ venue: registration.venue, address: registration.address })}</p>
