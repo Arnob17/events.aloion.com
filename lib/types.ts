@@ -80,6 +80,13 @@ export interface EventItem {
   sort_order: number;
 }
 
+export interface AdminEvent extends EventCard {
+  contact_email: string;
+  contact_phone: string;
+  review_note: string;
+  organizer?: Person;
+}
+
 export interface EventCard {
   id: number;
   slug: string;

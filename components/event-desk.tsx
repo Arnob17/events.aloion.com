@@ -30,6 +30,9 @@ const ACTION_LABELS: Record<string, [string, string]> = {
   complete: ["শেষ", "complete"],
   cancel: ["ইভেন্ট ক্যান্সেল", "cancel"],
   reopen: ["ড্রাফটে ফেরান", "reopen"],
+  approve: ["অ্যাপ্রুভ", ""],
+  reject: ["রিজেক্ট", ""],
+  delete: ["মুছে ফেলুন", ""],
 };
 
 export function EventDesk({ id, section }: { id: string; section: string }) {
@@ -87,8 +90,18 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
   async function run(action: string) {
     if (action === "approve") await api.approve(event.id);
     else if (action === "reject") {
-      const note = window.prompt("অর্গানাইজার কী বদলাবেন?") || "";
-      await api.reject(event.id, note);
+      const note = window.prompt("রিজেক্টের কারণ লিখুন");
+      if (note === null) return;
+      if (!note.trim()) {
+        alert("রিজেক্টের কারণ দরকার");
+        return;
+      }
+      await api.reject(event.id, note.trim());
+    } else if (action === "delete") {
+      if (!window.confirm("এই ইভেন্ট মুছে ফেলা হবে।")) return;
+      await api.removeEvent(event.id);
+      window.location.href = "/organizer";
+      return;
     } else {
       const path = ACTION_LABELS[action]?.[1];
       if (path) await api.act(event.id, path);
@@ -105,7 +118,7 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         {workspace.actions.filter((action) => ACTION_LABELS[action] || action === "approve" || action === "reject").map((action) => (
-          <button key={action} className="btn btn-primary" onClick={() => run(action).catch((err: Error) => alert(err.message))}>
+          <button key={action} className={action === "delete" || action === "reject" ? "btn btn-ghost" : "btn btn-primary"} onClick={() => run(action).catch((err: Error) => alert(err.message))}>
             {ACTION_LABELS[action]?.[0] || action}
           </button>
         ))}
@@ -265,7 +278,7 @@ function Registrations({ workspace, reload }: { workspace: Workspace; reload: ()
 }
 
 function TrxLine({ row }: { row: Registration }) {
-  if (!row.transaction_id && !row.payment_method) return <span className="text-[var(--muted)]">—</span>;
+  if (!row.transaction_id && !row.payment_method) return <span className="text-[var(--muted)]">-</span>;
   const method = PAY_METHODS.find((item) => item.id === row.payment_method);
   return (
     <span className="inline-flex items-center gap-2">
@@ -483,6 +496,7 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
     category: event.category,
     organization_name: event.organization_name,
     contact_email: event.contact_email,
+    contact_phone: event.contact_phone,
     venue: event.venue,
     address: event.address,
     online_url: event.online_url,
@@ -548,6 +562,12 @@ function Settings({ workspace, reload }: { workspace: Workspace; reload: () => P
           </FieldLabel>
           <FieldLabel label="অর্গানাইজেশন">
             <input className="field" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
+          </FieldLabel>
+          <FieldLabel label="যোগাযোগের ইমেইল">
+            <input className="field" type="email" value={form.contact_email} onChange={(event) => set("contact_email", event.target.value)} />
+          </FieldLabel>
+          <FieldLabel label="যোগাযোগের ফোন">
+            <input className="field" inputMode="tel" value={form.contact_phone} onChange={(event) => set("contact_phone", event.target.value)} placeholder="০১XXXXXXXXX" />
           </FieldLabel>
           <FieldLabel label="শুরু">
             <input className="field" value={form.starts_at} type="datetime-local" onChange={(event) => set("starts_at", event.target.value)} />

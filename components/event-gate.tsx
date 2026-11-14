@@ -33,7 +33,8 @@ export function EventGate({ slug, open }: { slug: string; open: boolean }) {
     );
   }
 
-  if (!open) return <p className="mt-5 text-sm text-[var(--muted)]">রেজিস্ট্রেশন এখন খোলা নেই।</p>;
+  const isOpen = event ? event.status === "registration_open" : open;
+  if (!isOpen) return <p className="mt-5 text-sm text-[var(--muted)]">রেজিস্ট্রেশন এখন খোলা নেই।</p>;
 
   return <Link href={`/events/${slug}/register`} className="btn btn-primary mt-5 w-full">এখনই রেজিস্ট্রেশন করুন</Link>;
 }

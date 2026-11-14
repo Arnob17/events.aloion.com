@@ -158,9 +158,9 @@ export default function RegisterPage() {
             <p><strong>{personName(user)}</strong> · {user.email}</p>
             {segments.length === 0 && <p>সেগমেন্ট: পুরো ইভেন্ট</p>}
             <FeeSummary event={event} segmentIds={segments} />
-            {needsPay && <p>পেমেন্ট: {PAY_METHODS.find((item) => item.id === method)?.label || "—"} · ট্রানজাকশন আইডি {trx.trim() || "—"}</p>}
-            {event.food_enabled && <p>খাবার: {event.meals.find((meal) => meal.id === mealId)?.name || "—"}</p>}
-            {event.fields.map((field) => <p key={field.id}>{field.label}: {answers[field.id]?.values?.join(", ") || answers[field.id]?.value || "—"}</p>)}
+            {needsPay && <p>পেমেন্ট: {PAY_METHODS.find((item) => item.id === method)?.label || "-"} · ট্রানজাকশন আইডি {trx.trim() || "-"}</p>}
+            {event.food_enabled && <p>খাবার: {event.meals.find((meal) => meal.id === mealId)?.name || "-"}</p>}
+            {event.fields.map((field) => <p key={field.id}>{field.label}: {answers[field.id]?.values?.join(", ") || answers[field.id]?.value || "-"}</p>)}
           </div>
         )}
         {current !== "review" && <FeeSummary event={event} segmentIds={segments} />}

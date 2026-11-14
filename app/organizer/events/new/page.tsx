@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AloionMark } from "@/components/aloion-mark";
 import { FieldLabel } from "@/components/field-label";
 import { api } from "@/lib/api";
@@ -20,6 +20,7 @@ export default function NewEventPage() {
     category: "Science",
     organization_name: "",
     contact_email: "",
+    contact_phone: "",
     starts_at: "",
     ends_at: "",
     timezone: "Asia/Dhaka",
@@ -34,6 +35,15 @@ export default function NewEventPage() {
     visibility: "public",
   });
 
+  useEffect(() => {
+    if (!user) return;
+    setForm((current) => ({
+      ...current,
+      contact_email: current.contact_email || user.email || "",
+      contact_phone: current.contact_phone || user.phone || "",
+    }));
+  }, [user]);
+
   if (loading) return <main className="p-10">লোড হচ্ছে…</main>;
   if (!user) return <main className="p-10"><button className="btn btn-primary" onClick={() => login()}><AloionMark />আলোআয়ন দিয়ে চালিয়ে যান</button></main>;
 
@@ -41,8 +51,24 @@ export default function NewEventPage() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function contactReady() {
+    const email = form.contact_email.trim();
+    const phoneDigits = form.contact_phone.replace(/\D/g, "");
+    if (!email.includes("@") || !email.includes(".") || phoneDigits.length < 8) {
+      setError("অর্গানাইজারের ইমেইল ও ফোন দিন");
+      return false;
+    }
+    setError("");
+    return true;
+  }
+
   async function create() {
     setError("");
+    if (!form.title.trim()) {
+      setError("ইভেন্টের নাম দিন");
+      return;
+    }
+    if (!contactReady()) return;
     try {
       const workspace = await api.create({
         title: form.title,
@@ -50,7 +76,8 @@ export default function NewEventPage() {
         description: form.description,
         category: form.category,
         organization_name: form.organization_name,
-        contact_email: form.contact_email || user?.email,
+        contact_email: form.contact_email.trim(),
+        contact_phone: form.contact_phone.trim(),
         timezone: form.timezone,
         starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : undefined,
         ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : undefined,
@@ -92,6 +119,12 @@ export default function NewEventPage() {
             </FieldLabel>
             <FieldLabel label="অর্গানাইজেশন">
               <input className="field" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="যোগাযোগের ইমেইল">
+              <input className="field" type="email" required value={form.contact_email} onChange={(event) => set("contact_email", event.target.value)} />
+            </FieldLabel>
+            <FieldLabel label="যোগাযোগের ফোন">
+              <input className="field" inputMode="tel" required placeholder="০১XXXXXXXXX" value={form.contact_phone} onChange={(event) => set("contact_phone", event.target.value)} />
             </FieldLabel>
           </>
         )}
@@ -141,13 +174,13 @@ export default function NewEventPage() {
                 <option value="private">প্রাইভেট লিংক</option>
               </select>
             </FieldLabel>
-            <p className="text-sm text-[var(--muted)]">ইভেন্ট ড্রাফট হিসেবে শুরু হবে। এরপর সেগমেন্ট ও প্রশ্ন যোগ করে সাবমিট দিন বা পাবলিশ করুন।</p>
+            <p className="text-sm text-[var(--muted)]">ইভেন্ট ড্রাফট হিসেবে শুরু হবে। পাবলিক হতে অ্যাডমিন অ্যাপ্রুভ লাগবে। যোগাযোগের ইমেইল ও ফোন ইভেন্টের পাতায় দেখাবে।</p>
           </>
         )}
         {error && <p className="text-sm text-red-700">{error}</p>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <button className="btn btn-ghost w-full sm:w-auto" type="button" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
-          {step < 2 ? <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={() => setStep((value) => value + 1)}>পরের স্টেপ</button> : <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={create}>ড্রাফট তৈরি</button>}
+          {step < 2 ? <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={() => { if (step === 0 && !contactReady()) return; setStep((value) => value + 1); }}>পরের স্টেপ</button> : <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={create}>ড্রাফট তৈরি</button>}
         </div>
       </div>
     </main>

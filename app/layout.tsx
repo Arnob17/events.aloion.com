@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
-import { Noto_Sans_Bengali, Noto_Serif_Bengali } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
+import ClickGuard from "@/components/click-guard";
 import { SessionProvider } from "@/lib/session";
-
-const sans = Noto_Sans_Bengali({
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-geist",
-});
-const serif = Noto_Serif_Bengali({
-  subsets: ["bengali", "latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-newsreader",
-});
 
 const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
 
@@ -27,10 +17,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="bn">
-      <body className={`${sans.variable} ${serif.variable} antialiased`}>
+      <body className="flex min-h-screen flex-col antialiased">
         <SessionProvider>
+          <ClickGuard />
           <Header />
-          {children}
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
         </SessionProvider>
       </body>
     </html>

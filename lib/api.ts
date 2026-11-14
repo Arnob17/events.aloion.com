@@ -1,6 +1,7 @@
 import type {
   Analytics,
   Certificate,
+  AdminEvent,
   EventCard,
   EventInput,
   PublicEvent,
@@ -177,10 +178,11 @@ export const api = {
   issueCertificate: (id: number, code: string) =>
     request<Certificate>(`/events/${id}/certificates`, { method: "POST", body: JSON.stringify({ code }) }),
   verifyCertificate: (hash: string) => request<Certificate>(`/event-certificates/verify/${hash}`),
-  adminEvents: (query = "") => request<{ events: EventCard[]; total: number }>(`/admin/events${query}`),
+  adminEvents: (query = "") => request<{ events: AdminEvent[]; total: number }>(`/admin/events${query}`),
   approve: (id: number) => request<Workspace>(`/admin/events/${id}/approve`, { method: "POST", body: "{}" }),
   reject: (id: number, note: string) =>
     request<Workspace>(`/admin/events/${id}/reject`, { method: "POST", body: JSON.stringify({ note }) }),
+  removeEvent: (id: number) => request(`/events/${id}`, { method: "DELETE" }),
   grant: (identifier: string) =>
     request(`/admin/events/publish-grants`, { method: "POST", body: JSON.stringify({ identifier }) }),
   upload: async (file: File) => {
