@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { CheckIn } from "@/components/check-in";
 import { FieldLabel } from "@/components/field-label";
 import { PAY_METHODS, payMethodLabel } from "@/components/pay-method";
-import { api, mediaURL } from "@/lib/api";
+import { api, mediaURL, aloionLoginURL } from "@/lib/api";
 import { CATEGORIES, money, statusLabel, when } from "@/lib/format";
 import type { Registration, Segment, Workspace } from "@/lib/types";
 
@@ -87,7 +87,77 @@ export function EventDesk({ id, section }: { id: string; section: string }) {
 function Overview({ workspace, reload }: { workspace: Workspace; reload: () => Promise<void> }) {
   const { counts, event } = workspace;
   const attendance = counts.attendance_rate.toFixed(2);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const actionToConfirm = params.get("confirm_action");
+    if (!actionToConfirm) return;
+
+    const rawPending = sessionStorage.getItem("pending_event_action");
+    if (!rawPending) return;
+
+    try {
+      const pending = JSON.parse(rawPending);
+      sessionStorage.removeItem("pending_event_action");
+
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("confirm_action");
+      window.history.replaceState({}, "", cleanUrl.toString());
+
+      if (
+        pending.eventId === event.id &&
+        pending.action === actionToConfirm &&
+        Date.now() - pending.timestamp < 15 * 60 * 1000
+      ) {
+        const path = ACTION_LABELS[actionToConfirm]?.[1];
+        if (path) {
+          api
+            .act(event.id, path)
+            .then(async () => {
+              alert(
+                actionToConfirm === "close_registration"
+                  ? "ইভেন্ট রেজিস্ট্রেশন সফলভাবে বন্ধ করা হয়েছে।"
+                  : "ইভেন্ট সফলভাবে ক্যান্সেল করা হয়েছে।"
+              );
+              await reload();
+            })
+            .catch((err) => {
+              alert(err instanceof Error ? err.message : "অ্যাকশন সম্পন্ন করা যায়নি");
+            });
+        }
+      }
+    } catch {
+      sessionStorage.removeItem("pending_event_action");
+    }
+  }, [event.id, reload]);
+
+  function handleConfirmAction(action: string) {
+    setProcessing(true);
+    try {
+      sessionStorage.setItem(
+        "pending_event_action",
+        JSON.stringify({
+          eventId: event.id,
+          action,
+          timestamp: Date.now(),
+        })
+      );
+    } catch {
+      // ignore
+    }
+    const returnUrl = new URL(window.location.href);
+    returnUrl.searchParams.set("confirm_action", action);
+    window.location.href = aloionLoginURL(returnUrl.toString());
+  }
+
   async function run(action: string) {
+    if (action === "close_registration" || action === "cancel") {
+      setConfirmAction(action);
+      return;
+    }
     if (action === "approve") await api.approve(event.id);
     else if (action === "reject") {
       const note = window.prompt("রিজেক্টের কারণ লিখুন");
@@ -134,6 +204,46 @@ function Overview({ workspace, reload }: { workspace: Workspace; reload: () => P
           <div key={segment.id} className="flex justify-between gap-3 text-sm"><span className="min-w-0 break-words">{segment.name}</span><span className="shrink-0">{money(segment.fee_amount, event.currency)} · {segment.registration_count || 0}</span></div>
         ))}
       </div>
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="card w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-600">
+              <svg className="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="serif text-xl font-bold text-[var(--ink)]">
+                {confirmAction === "close_registration" ? "রেজিস্ট্রেশন বন্ধ নিশ্চিতকরণ" : "ইভেন্ট ক্যান্সেল নিশ্চিতকরণ"}
+              </h3>
+            </div>
+            <p className="mt-4 text-base font-medium">
+              {confirmAction === "close_registration"
+                ? "আপনি কি আসলেই ইভেন্ট রেজিস্ট্রেশন বন্ধ করতে চাচ্ছেন?"
+                : "আপনি কি আসলেই ইভেন্ট ক্যান্সেল করতে চাচ্ছেন?"}
+            </p>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              ভুলবশত ক্লিক ঠেকাতে এই অতিরিক্ত পদক্ষেপ রাখা হয়েছে। নিশ্চিত করার জন্য আপনাকে আলোআয়ন অ্যাকাউন্টে পুনরায় লগইন করতে হবে।
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setConfirmAction(null)}
+                disabled={processing}
+              >
+                না
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary bg-red-700 hover:bg-red-800"
+                disabled={processing}
+                onClick={() => handleConfirmAction(confirmAction)}
+              >
+                {processing ? "অপেক্ষা করুন…" : "হ্যাঁ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
