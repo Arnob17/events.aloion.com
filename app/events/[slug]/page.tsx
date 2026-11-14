@@ -85,7 +85,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </dl>
           <EventGate slug={event.slug} open={open} />
           {(event.contact_email || event.contact_phone) && (
-            <p className="mt-4 text-sm text-[var(--muted)]">যোগাযোগ {event.contact_email || event.contact_phone}</p>
+            <div className="mt-4 border-t border-[var(--line)] pt-4 text-sm">
+              <p className="font-semibold">অর্গানাইজারের যোগাযোগ</p>
+              {event.contact_email && <p className="mt-1"><a className="underline" href={`mailto:${event.contact_email}`}>{event.contact_email}</a></p>}
+              {event.contact_phone && <p className="mt-1"><a className="underline" href={`tel:${event.contact_phone}`}>{event.contact_phone}</a></p>}
+            </div>
           )}
         </aside>
       </section>
