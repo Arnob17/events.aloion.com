@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AccountGate } from "@/components/account-gate";
 import { FieldLabel } from "@/components/field-label";
@@ -17,6 +17,7 @@ type RegistrationStep = "segments" | "questions" | "payment" | "review";
 
 export default function RegisterPage() {
   const { slug } = useParams<{ slug: string }>();
+  const router = useRouter();
   const { user, loading, logout } = useSession();
   const [event, setEvent] = useState<PublicEvent | null>(null);
   const [step, setStep] = useState(0);
@@ -52,19 +53,19 @@ export default function RegisterPage() {
   }
   if (done) {
     return (
-      <main className="mx-auto max-w-lg px-4 py-12 text-center">
-        <p className="text-sm font-semibold text-[var(--pine)]">রেজিস্ট্রেশন হয়েছে</p>
-        <h1 className="serif mt-2 break-words text-3xl sm:text-4xl">{event.title}</h1>
-        <p className="mt-3 text-sm text-[var(--muted)]">{user.email}-এ কনফার্মেশনের চিঠি পাঠানো হয়েছে</p>
-        <p className="mt-4 text-sm text-[var(--muted)]">রেজিস্ট্রেশন নম্বর</p>
-        <p className="font-mono text-2xl">{done.public_code}</p>
-        {done.amount_due > 0 && <p className="mt-3 text-lg font-semibold">মোট {money(done.amount_due, done.currency || event.currency)}</p>}
-        {done.transaction_id && <p className="mt-2 text-sm">ট্রানজাকশন আইডি <span className="font-mono">{done.transaction_id}</span>. অর্গানাইজার মিলিয়ে রেজিস্ট্রেশন অ্যাকসেপ্ট করবেন।</p>}
-        {done.qr_token && <TicketQR token={done.qr_token} />}
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Link href={`/events/${event.slug}`} className="btn btn-ghost">ইভেন্টের পাতা</Link>
-          <Link href={`/tickets/${done.public_code}`} className="btn btn-primary">টিকিট খুলুন</Link>
-        </div>
+      <main className="mx-auto max-w-lg px-4 py-12">
+        <RegistrationCard
+          registration={{
+            ...done,
+            event_slug: slug,
+            event_title: event.title,
+            event_starts_at: done.event_starts_at || event.starts_at,
+            event_ends_at: done.event_ends_at || event.ends_at,
+            venue: done.venue || event.venue,
+            address: done.address || event.address,
+          }}
+          showTicketLink={false}
+        />
       </main>
     );
   }
@@ -100,6 +101,7 @@ export default function RegisterPage() {
         })),
       });
       setDone(registration);
+      router.push(`/tickets/${registration.public_code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "রেজিস্ট্রেশন হয়নি");
     } finally {

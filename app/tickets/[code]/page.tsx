@@ -18,7 +18,12 @@ export default function TicketPage() {
 
   useEffect(() => {
     if (loading || !user) return;
-    api.ticket(code).then(setTicket).catch((err: Error) => setError(err.message));
+    api.ticket(code).then((data) => {
+      setTicket(data);
+      if (data?.public_code) {
+        document.title = `Ticket-${data.public_code}`;
+      }
+    }).catch((err: Error) => setError(err.message));
   }, [code, user, loading]);
 
   async function cancel() {
@@ -51,9 +56,9 @@ export default function TicketPage() {
         <>
           <RegistrationCard registration={ticket} showTicketLink={false} />
           {ticket.status !== "cancelled" && ticket.status !== "checked_in" && (
-            <button className="btn btn-ghost mt-4" disabled={cancelling} onClick={cancel}>রেজিস্ট্রেশন ক্যান্সেল</button>
+            <button className="btn btn-ghost mt-4 no-print" disabled={cancelling} onClick={cancel}>রেজিস্ট্রেশন ক্যান্সেল</button>
           )}
-          <Link href="/my-events" className="mt-4 block text-center text-sm underline">আমার সব ইভেন্ট</Link>
+          <Link href="/my-events" className="mt-4 block text-center text-sm underline no-print">আমার সব ইভেন্ট</Link>
         </>
       )}
     </main>
