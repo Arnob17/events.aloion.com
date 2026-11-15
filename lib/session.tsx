@@ -26,7 +26,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   async function refresh() {
     try {
-      setUser(await api.me());
+      const me = await api.me();
+      setUser(me && me.id ? me : null);
     } catch {
       setUser(null);
     }
@@ -41,7 +42,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
           const session = await api.exchange(code);
           storeSession(session.token, session.refresh_token);
-          if (!cancelled) setUser(session.user);
+          if (!cancelled && session.user && session.user.id) setUser(session.user);
         } catch {
           clearSession();
         }
@@ -51,7 +52,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (!cancelled && !code) await refresh();
       if (!cancelled && code) {
         try {
-          setUser(await api.me());
+          const me = await api.me();
+          setUser(me && me.id ? me : null);
         } catch {
           setUser(null);
         }

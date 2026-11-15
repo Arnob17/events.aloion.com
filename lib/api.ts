@@ -35,12 +35,12 @@ export function aloionRegisterURL(returnTo: string) {
   return url.toString();
 }
 
-function token() {
+export function token() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("events_token");
 }
 
-function refreshToken() {
+export function refreshToken() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("events_refresh_token");
 }
@@ -105,7 +105,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ code }),
     }),
-  me: () => request<User>("/users/me"),
+  me: async (): Promise<User | null> => {
+    if (!token()) return null;
+    try {
+      const res = await request<any>("/users/me");
+      if (!res) return null;
+      if (res.authenticated === false) return null;
+      const user = res.user || (res.id ? res : null);
+      if (!user || !user.id) return null;
+      return user as User;
+    } catch {
+      return null;
+    }
+  },
   events: (query = "") => request<{ events: EventCard[]; total: number }>(`/events${query}`),
   event: (slug: string) => request<PublicEvent>(`/events/${slug}`),
   managed: () => request<{ events: EventCard[] }>("/me/events"),
