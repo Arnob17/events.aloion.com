@@ -81,7 +81,7 @@ function AccountSlot({ loading, user, login, logout, stacked = false }: { loadin
 function UserChip({ user, onClick, wide = false }: { user: User; onClick: () => void; wide?: boolean }) {
   const [failed, setFailed] = useState(false);
   const src = mediaURL(user.profile_picture);
-  const letters = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.trim() || "আ";
+  const letters = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.trim() || user.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "আ";
 
   return (
     <button className={`btn btn-ghost !py-1.5 !pl-1.5 ${wide ? "w-full justify-start" : "max-w-[14rem]"}`} onClick={onClick}>

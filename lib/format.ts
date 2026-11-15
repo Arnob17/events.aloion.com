@@ -22,8 +22,12 @@ const STATUS: Record<string, string> = {
   admin: "অ্যাডমিন",
 };
 
-export function personName(person?: { first_name?: string; last_name?: string } | null) {
-  return `${person?.first_name || ""} ${person?.last_name || ""}`.trim() || "গেস্ট";
+export function personName(person?: { first_name?: string; last_name?: string; username?: string; email?: string } | null) {
+  const full = `${person?.first_name || ""} ${person?.last_name || ""}`.trim();
+  if (full) return full;
+  if (person?.username?.trim()) return person.username.trim();
+  if (person?.email) return person.email.split("@")[0];
+  return "অংশগ্রহণকারী";
 }
 
 export function when(value?: string | null, timeZone = "Asia/Dhaka") {
