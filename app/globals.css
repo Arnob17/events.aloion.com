@@ -534,12 +534,9 @@ a.card:hover {
 
 }
 
-/* Home: a soft green wash that fades down the page into the paper colour. */
+/* Home: a gentle green tint at the top that fades into the paper colour. */
 .home-bg {
-  background:
-    radial-gradient(70rem 36rem at 50% -8rem, rgba(46, 160, 120, 0.22), transparent 70%),
-    radial-gradient(40rem 30rem at 92% 30rem, rgba(226, 163, 27, 0.08), transparent 70%),
-    linear-gradient(180deg, #e4f1ea 0%, #edf4ef 22rem, #f3f4ef 48rem, var(--paper) 80rem);
+  background: linear-gradient(180deg, #e8f2ec 0%, #eff4ef 26rem, var(--paper) 52rem);
 }
 
 /* Headline word: slides up into place. */
@@ -548,18 +545,20 @@ a.card:hover {
 }
 
 @keyframes word-in {
-  from { opacity: 0; transform: translateY(60%); filter: blur(4px); }
+  from { opacity: 0; transform: translateY(60%); }
 }
 
-/* Flip board: each new event flips down into view. */
-.flip-in {
-  transform-origin: 50% 0;
-  animation: flip-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
+/* Event slider: the new card pushes the old one out. Forward moves right to left;
+   jumping back to an earlier event moves left to right. */
+.slide-in { animation: slide-in 0.65s cubic-bezier(0.22, 0.8, 0.24, 1) both; }
+.slide-in-back { animation: slide-in-back 0.65s cubic-bezier(0.22, 0.8, 0.24, 1) both; }
+.slide-out { animation: slide-out 0.65s cubic-bezier(0.22, 0.8, 0.24, 1) both; }
+.slide-out-back { animation: slide-out-back 0.65s cubic-bezier(0.22, 0.8, 0.24, 1) both; }
 
-@keyframes flip-in {
-  from { opacity: 0; transform: rotateX(-75deg); }
-}
+@keyframes slide-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes slide-in-back { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes slide-out { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes slide-out-back { from { transform: translateX(0); } to { transform: translateX(100%); } }
 
 .rail {
   scrollbar-width: none;
