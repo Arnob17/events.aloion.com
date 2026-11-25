@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarIcon, MapPinIcon, SearchIcon, UsersIcon } from "@/components/icons";
+import { MapPinIcon, SearchIcon } from "@/components/icons";
 import { api, mediaURL } from "@/lib/api";
-import { CATEGORIES, categoryLabel, money, num, place, registrationWindow, statusLabel, timeLeft, when } from "@/lib/format";
+import { CATEGORIES, categoryLabel, num, place, registrationWindow, statusLabel, timeLeft, when } from "@/lib/format";
 import type { EventCard } from "@/lib/types";
 
 const TZ = "Asia/Dhaka";
 const fmt = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("bn-BD", { timeZone: TZ, ...options });
 const dayNum = fmt({ day: "numeric" });
 const monthShort = fmt({ month: "short" });
-const shortDate = fmt({ weekday: "short", day: "numeric", month: "short" });
+const weekday = fmt({ weekday: "short" });
+const monthYear = fmt({ month: "long", year: "numeric" });
 const timeOfDay = fmt({ hour: "numeric", minute: "2-digit" });
 
-/** One colour per slide: [base, darker edge, light accent for the status box and category]. */
+/** One colour per slide: [solid colour, darker shade (unused), light accent for the status box and category]. */
 const TONES: [string, string, string][] = [
   ["#0e6b56", "#073f33", "#9be8cc"],
   ["#a3620a", "#5f3905", "#ffd98a"],
@@ -77,6 +78,9 @@ export default function DiscoverPage() {
   }, [events]);
   // The slider walks through the next dated events, soonest first.
   const slides = upcoming.filter((event) => event.starts_at).slice(0, 6);
+  const months = groupByMonth(upcoming);
+  // The programme row shows upcoming banners; open registrations first.
+  const rail = [...upcoming].sort((a, b) => Number(registrationWindow(b) === "open") - Number(registrationWindow(a) === "open") || time(a) - time(b)).slice(0, 12);
 
   function reset() {
     setInput("");
@@ -130,6 +134,20 @@ export default function DiscoverPage() {
         {!filtered && slides.length > 0 && <EventSlider events={slides} />}
       </section>
 
+      {rail.length > 0 && (
+        <section className="pt-8" aria-label="প্রোগ্রাম">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mb-4 flex items-end justify-between">
+              <h2 className="serif text-2xl sm:text-3xl">প্রোগ্রাম</h2>
+              <a href="#events" className="text-sm font-semibold text-[var(--pine)]">পুরো সূচি ↓</a>
+            </div>
+          </div>
+          <div className="rail mx-auto flex max-w-6xl gap-4 overflow-x-auto px-4 pb-4">
+            {rail.map((event) => <ProgrammeCard key={event.id} event={event} />)}
+          </div>
+        </section>
+      )}
+
       <section id="events" className="mx-auto max-w-6xl scroll-mt-20 px-4 pt-10 pb-16">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -152,7 +170,7 @@ export default function DiscoverPage() {
         {error && <p className="notice notice-error mt-6">{error}</p>}
 
         {events === null ? (
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((n) => <div key={n} className="skeleton h-80" />)}</div>
+          <div className="mt-6 space-y-3">{[0, 1, 2].map((n) => <div key={n} className="skeleton h-28" />)}</div>
         ) : upcoming.length === 0 ? (
           <div className="py-16 text-center">
             <p className="serif text-2xl">{filtered ? "এই খোঁজে কোনো ইভেন্ট নেই" : "এই মুহূর্তে সামনে কোনো ইভেন্ট নেই"}</p>
@@ -160,9 +178,14 @@ export default function DiscoverPage() {
             {filtered && <button type="button" className="btn btn-ghost mt-5" onClick={reset}>সব ইভেন্ট দেখুন</button>}
           </div>
         ) : (
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {upcoming.map((event) => <EventTile key={event.id} event={event} />)}
-          </div>
+          months.map(([label, rows]) => (
+            <div key={label} className="mt-10 first:mt-8">
+              <h3 className="mb-3 text-sm font-bold text-[var(--pine)]">{label}</h3>
+              <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+                {rows.map((event) => <EventRow key={event.id} event={event} />)}
+              </ul>
+            </div>
+          ))
         )}
 
         {past.length > 0 && !openOnly && (
@@ -233,36 +256,58 @@ function StatusBox({ event, accent }: { event: EventCard; accent?: string }) {
   return <span className={`${box} ${tone}`}>{text}</span>;
 }
 
-/** Event card: the full banner on top, the details underneath it. */
-function EventTile({ event }: { event: EventCard }) {
+function groupByMonth(rows: EventCard[]): [string, EventCard[]][] {
+  const groups = new Map<string, EventCard[]>();
+  for (const event of rows) {
+    const label = event.starts_at ? monthYear.format(new Date(event.starts_at)) : "তারিখ শিগগির জানানো হবে";
+    groups.set(label, [...(groups.get(label) || []), event]);
+  }
+  return [...groups.entries()];
+}
+
+/** One line of the month timeline: big date, the details, and the banner as a thumbnail. */
+function EventRow({ event }: { event: EventCard }) {
   const start = event.starts_at ? new Date(event.starts_at) : null;
   return (
-    <Link href={`/events/${event.slug}`} className="group flex flex-col overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-white transition hover:-translate-y-0.5 hover:border-[var(--pine)]/40 hover:shadow-[var(--shadow)]">
-      <div className="relative">
-        <Banner event={event} className="aspect-[16/9] w-full" />
-        {start && (
-          <div className="absolute top-3 left-3 rounded-[0.6rem] bg-white px-2.5 py-1 text-center shadow-sm">
-            <p className="text-lg font-bold leading-none">{dayNum.format(start)}</p>
-            <p className="text-[0.7rem] font-semibold text-[var(--pine)]">{monthShort.format(start)}</p>
-          </div>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <div><StatusBox event={event} /></div>
-        <h3 className="mt-2 line-clamp-2 text-lg font-bold leading-snug group-hover:text-[var(--pine-deep)]">{event.title}</h3>
-        <p className="mt-0.5 text-sm muted">{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
-        {event.summary && <p className="mt-2 line-clamp-2 text-sm text-[var(--ink-2)]">{event.summary}</p>}
-        <div className="mt-auto pt-4">
-          <ul className="space-y-1.5 border-t border-[var(--line)] pt-3 text-sm">
-            <li className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 shrink-0 muted" />{start ? `${shortDate.format(start)} · ${timeOfDay.format(start)}` : "তারিখ শিগগির"}</li>
-            <li className="flex min-w-0 items-center gap-2"><MapPinIcon className="h-4 w-4 shrink-0 muted" /><span className="truncate">{place(event)}</span></li>
-            <li className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2"><UsersIcon className="h-4 w-4 shrink-0 muted" />{num(event.registration_count || 0)} জন{event.capacity ? ` / ${num(event.capacity)}` : ""}</span>
-              <span className="font-semibold">{money(event.fee_amount, event.currency)}</span>
-            </li>
-          </ul>
+    <li>
+      <Link href={`/events/${event.slug}`} className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-4 py-5 sm:grid-cols-[4.5rem_minmax(0,1fr)_11rem] sm:gap-6">
+        <div className="text-center">
+          {start ? (
+            <>
+              <p className="text-xs font-semibold muted">{weekday.format(start)}</p>
+              <p className="serif text-3xl leading-none sm:text-4xl">{dayNum.format(start)}</p>
+              <p className="mt-1 text-xs font-semibold text-[var(--pine)]">{monthShort.format(start)}</p>
+            </>
+          ) : <p className="text-xs font-semibold muted">শিগগির</p>}
         </div>
-      </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold muted">{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
+          <h4 className="mt-0.5 text-lg font-bold leading-snug break-words group-hover:text-[var(--pine)] sm:text-xl">{event.title}</h4>
+          {event.summary && <p className="mt-1 line-clamp-1 text-sm muted">{event.summary}</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+            {start && <span>{timeOfDay.format(start)}</span>}
+            <span className="inline-flex items-center gap-1 muted"><MapPinIcon className="h-3.5 w-3.5" />{place(event)}</span>
+            <StatusBox event={event} />
+          </div>
+        </div>
+        <div className="hidden sm:block">
+          <Banner event={event} cover className="aspect-[16/10] w-full rounded-[var(--radius-sm)]" />
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+/** A programme in the row: only its banner, which already carries the event's own artwork and text. */
+function ProgrammeCard({ event }: { event: EventCard }) {
+  return (
+    <Link
+      href={`/events/${event.slug}`}
+      aria-label={event.title}
+      title={event.title}
+      className="block w-[15rem] shrink-0 overflow-hidden rounded-[1rem] bg-white shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45)] ring-1 ring-[var(--line)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-14px_rgba(0,0,0,0.5)] sm:w-[16.5rem]"
+    >
+      <Banner event={event} cover className="aspect-[4/5] w-full" />
     </Link>
   );
 }
@@ -332,7 +377,7 @@ function EventSlider({ events }: { events: EventCard[] }) {
 
 /** One slide: the banner on the left, the details and a countdown in the event's colour on the right. */
 function Slide({ event, tone, now, link = false }: { event: EventCard; tone: [string, string, string]; now: number; link?: boolean }) {
-  const [base, edge, accent] = tone;
+  const [base, , accent] = tone;
   const start = event.starts_at ? new Date(event.starts_at) : null;
   const left = start ? Math.max(0, start.getTime() - now) : 0;
   const parts = [
@@ -342,7 +387,7 @@ function Slide({ event, tone, now, link = false }: { event: EventCard; tone: [st
     [Math.floor(left / 1000) % 60, "সেকেন্ড"],
   ] as const;
   const body = (
-    <div className="grid h-full text-left text-white md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" style={{ background: `linear-gradient(135deg, ${base} 0%, ${edge} 100%)` }}>
+    <div className="grid h-full text-left text-white md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" style={{ background: base }}>
       <Banner event={event} cover className="aspect-[16/9] h-full w-full md:aspect-auto md:min-h-[16rem]" />
       <div className="flex flex-col p-5 sm:p-6">
         <p className="text-sm font-semibold" style={{ color: accent }}>{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
