@@ -36,12 +36,12 @@ export function aloionRegisterURL(returnTo: string) {
   return url.toString();
 }
 
-function token() {
+export function token() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("events_token");
 }
 
-function refreshToken() {
+export function refreshToken() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("events_refresh_token");
 }
@@ -107,10 +107,17 @@ export const api = {
       body: JSON.stringify({ code }),
     }),
   // /users/me answers 200 {authenticated:false, user:null} when nobody is logged in, and may wrap the user.
-  me: async () => {
-    const data = await request<User | { authenticated?: boolean; user?: User | null }>("/users/me");
-    const user = data && "authenticated" in data ? data.user : (data as User);
-    return user && user.id ? user : null;
+  me: async (): Promise<User | null> => {
+    if (!token()) return null;
+    try {
+      const res = await request<User | { authenticated?: boolean; user?: User | null }>("/users/me");
+      if (!res) return null;
+      if ("authenticated" in res && res.authenticated === false) return null;
+      const user = "user" in res ? res.user : (res as User);
+      return user && user.id ? user : null;
+    } catch {
+      return null;
+    }
   },
   events: (query = "") => request<{ events: EventCard[]; total: number }>(`/events${query}`),
   event: (slug: string) => request<PublicEvent>(`/events/${slug}`),

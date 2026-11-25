@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { Section, Stat, useAction, useConfirm } from "@/components/ui";
-import { api } from "@/lib/api";
+import { aloionLoginURL, api } from "@/lib/api";
 import { money, num, registrationWindow, timeLeft, when } from "@/lib/format";
 import type { Workspace } from "@/lib/types";
 
@@ -12,15 +13,20 @@ const ACTIONS: Record<string, Action> = {
   submit: { label: "অ্যাপ্রুভের জন্য পাঠান", path: "submit", tone: "primary", confirm: { title: "অ্যাডমিনের কাছে পাঠাবেন?", body: "অ্যাডমিন অ্যাপ্রুভ করলে ইমেইল পাবেন, তারপর পাবলিশ করা যাবে।" } },
   publish: { label: "পাবলিশ করুন", path: "publish", tone: "primary", confirm: { title: "ইভেন্ট পাবলিশ করবেন?", body: "পাবলিশ করলে সবাই ইভেন্টের পাতা দেখতে পাবে। রেজিস্ট্রেশন আলাদা করে খুলতে হবে।" } },
   open_registration: { label: "রেজিস্ট্রেশন খুলুন", path: "registration/open", tone: "primary" },
-  close_registration: { label: "রেজিস্ট্রেশন বন্ধ করুন", path: "registration/close", tone: "ghost", confirm: { title: "রেজিস্ট্রেশন বন্ধ করবেন?", body: "নতুন কেউ রেজিস্ট্রেশন করতে পারবে না। পরে আবার খোলা যাবে।" } },
+  close_registration: { label: "রেজিস্ট্রেশন বন্ধ করুন", path: "registration/close", tone: "ghost", confirm: { title: "আপনি কি আসলেই ইভেন্ট রেজিস্ট্রেশন বন্ধ করতে চাচ্ছেন?", body: "নতুন কেউ রেজিস্ট্রেশন করতে পারবে না। ভুলবশত ক্লিক ঠেকাতে নিশ্চিত করার জন্য আপনাকে আলোআয়ন অ্যাকাউন্টে পুনরায় লগইন করতে হবে।" } },
   start: { label: "ইভেন্ট শুরু (চলছে)", path: "start", tone: "ghost" },
   complete: { label: "ইভেন্ট শেষ", path: "complete", tone: "ghost", confirm: { title: "ইভেন্ট শেষ হিসেবে চিহ্নিত করবেন?", body: "এরপর সার্টিফিকেট ইস্যু করা যাবে।" } },
   reopen: { label: "আবার ড্রাফটে আনুন", path: "reopen", tone: "ghost" },
-  cancel: { label: "ইভেন্ট ক্যান্সেল", path: "cancel", tone: "danger", confirm: { title: "পুরো ইভেন্ট ক্যান্সেল করবেন?", body: "ইভেন্টটি ক্যান্সেল দেখাবে। রেজিস্ট্রেশনকারীদের আলাদা করে জানাতে হবে।" } },
+  cancel: { label: "ইভেন্ট ক্যান্সেল", path: "cancel", tone: "danger", confirm: { title: "আপনি কি আসলেই ইভেন্ট ক্যান্সেল করতে চাচ্ছেন?", body: "ইভেন্টটি ক্যান্সেল দেখাবে। ভুলবশত ক্লিক ঠেকাতে নিশ্চিত করার জন্য আপনাকে আলোআয়ন অ্যাকাউন্টে পুনরায় লগইন করতে হবে।" } },
   approve: { label: "অ্যাপ্রুভ", tone: "primary" },
   reject: { label: "রিজেক্ট", tone: "danger" },
   delete: { label: "ইভেন্ট মুছে ফেলুন", tone: "danger" },
 };
+
+/** Actions that need a fresh Aloion login before they run, so a stray click cannot end registration or the event. */
+const RELOGIN = new Set(["close_registration", "cancel"]);
+const PENDING_KEY = "pending_event_action";
+const PENDING_TTL = 15 * 60 * 1000;
 
 const STATUS_HINT: Record<string, string> = {
   draft: "ড্রাফট অবস্থায় শুধু আপনার টিম দেখতে পায়। সব তথ্য দিয়ে অ্যাপ্রুভের জন্য পাঠান।",
@@ -44,6 +50,27 @@ export function Overview({ workspace, reload }: { workspace: Workspace; reload: 
   const windowState = registrationWindow(event);
   const fee = event.fee_amount > 0 || event.segments.some((segment) => segment.fee_amount > 0);
 
+  // Back from the re-login: run the action the organizer confirmed before leaving.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const wanted = url.searchParams.get("confirm_action");
+    if (!wanted) return;
+    url.searchParams.delete("confirm_action");
+    window.history.replaceState({}, "", url.toString());
+    let pending: { eventId?: number; action?: string; timestamp?: number } | null = null;
+    try {
+      pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null");
+      sessionStorage.removeItem(PENDING_KEY);
+    } catch {
+      sessionStorage.removeItem(PENDING_KEY);
+    }
+    const spec = ACTIONS[wanted];
+    if (!pending || !spec?.path || !RELOGIN.has(wanted)) return;
+    if (pending.eventId !== event.id || pending.action !== wanted || Date.now() - (pending.timestamp || 0) > PENDING_TTL) return;
+    act(() => api.act(event.id, spec.path!).then(reload), wanted === "close_registration" ? "ইভেন্ট রেজিস্ট্রেশন সফলভাবে বন্ধ করা হয়েছে" : "ইভেন্ট সফলভাবে ক্যান্সেল করা হয়েছে");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]);
+
   async function run(action: string) {
     const spec = ACTIONS[action];
     if (action === "reject") {
@@ -59,8 +86,19 @@ export function Overview({ workspace, reload }: { workspace: Workspace; reload: 
       return;
     }
     if (spec.confirm) {
-      const ok = await confirm({ ...spec.confirm, confirmLabel: spec.label, danger: spec.tone === "danger" });
+      const ok = await confirm({ ...spec.confirm, confirmLabel: RELOGIN.has(action) ? "হ্যাঁ, লগইন করে নিশ্চিত করুন" : spec.label, danger: spec.tone === "danger" || RELOGIN.has(action) });
       if (!ok) return;
+    }
+    if (RELOGIN.has(action)) {
+      try {
+        sessionStorage.setItem(PENDING_KEY, JSON.stringify({ eventId: event.id, action, timestamp: Date.now() }));
+      } catch {
+        // Without session storage the action simply will not run after login.
+      }
+      const back = new URL(window.location.href);
+      back.searchParams.set("confirm_action", action);
+      window.location.href = aloionLoginURL(back.toString());
+      return;
     }
     if (action === "approve") return act(() => api.approve(event.id).then(reload), "অ্যাপ্রুভ হয়েছে");
     return act(() => api.act(event.id, spec.path!).then(reload), "স্ট্যাটাস বদলানো হয়েছে");

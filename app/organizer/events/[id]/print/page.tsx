@@ -60,7 +60,7 @@ export default function PrintRegistrations() {
   const fields = event?.fields || [];
 
   return (
-    <main className="mx-auto max-w-[80rem] px-4 py-6 print:max-w-none print:p-0">
+    <main className="print-list mx-auto max-w-[80rem] px-4 py-6 print:max-w-none print:p-0">
       <div className="no-print mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-white p-3">
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/organizer/events/${id}/registrations`} className="btn btn-ghost btn-sm">← ডেস্ক</Link>

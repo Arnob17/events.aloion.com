@@ -24,6 +24,8 @@ export default function TicketPage() {
     if (loading || !user) return;
     api.ticket(code).then((row) => {
       setTicket(row);
+      // The print dialog uses the page title as the PDF file name.
+      if (row?.public_code) document.title = `Ticket-${row.public_code}`;
       if (row.event_slug) api.event(row.event_slug).then((event) => setGifts(event.gifts || [])).catch(() => undefined);
     }).catch((err: Error) => setError(err.message));
   }, [code, user, loading]);
@@ -55,14 +57,14 @@ export default function TicketPage() {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-8">
-      <Link href="/my-events" className="text-sm font-semibold text-[var(--pine)]">← আমার সব টিকিট</Link>
+      <Link href="/my-events" className="no-print text-sm font-semibold text-[var(--pine)]">← আমার সব টিকিট</Link>
       <div className="mt-3">
         {error && <p className="notice notice-error">{error}</p>}
         {!ticket && !error && <div className="skeleton h-96" />}
         {ticket && <RegistrationCard registration={ticket} showTicketLink={false} gifts={gifts} />}
       </div>
       {ticket && !["cancelled", "checked_in", "rejected"].includes(ticket.status) && (
-        <button className="btn btn-danger-ghost mt-4 w-full" disabled={cancelling} onClick={cancel}>রেজিস্ট্রেশন ক্যান্সেল</button>
+        <button className="btn btn-danger-ghost no-print mt-4 w-full" disabled={cancelling} onClick={cancel}>রেজিস্ট্রেশন ক্যান্সেল</button>
       )}
     </main>
   );

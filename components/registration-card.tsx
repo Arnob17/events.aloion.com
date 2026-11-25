@@ -17,7 +17,7 @@ const STATUS_NOTE: Record<string, string> = {
 };
 
 /** A registration as its owner sees it: ticket, choices, and what has been collected. */
-export function RegistrationCard({ registration, compact = false, showTicketLink = true, gifts = [] }: { registration: Registration; compact?: boolean; showTicketLink?: boolean; gifts?: Gift[] }) {
+export function RegistrationCard({ registration, compact = false, showTicketLink = true, showDownload = true, gifts = [] }: { registration: Registration; compact?: boolean; showTicketLink?: boolean; showDownload?: boolean; gifts?: Gift[] }) {
   const items = registration.items || [];
   const received = new Set(items.map((item) => item.item_id));
   const waiting = gifts.filter((gift) => !received.has(gift.id));
@@ -40,7 +40,7 @@ export function RegistrationCard({ registration, compact = false, showTicketLink
   }
 
   return (
-    <article className="card overflow-hidden">
+    <article className="card print-ticket overflow-hidden">
       <div className="relative bg-[var(--pine-deep)] px-5 py-5 text-white">
         <p className="text-sm font-semibold text-[var(--gold)]">আপনার টিকিট</p>
         <h2 className="serif mt-1 break-words text-2xl sm:text-3xl">{registration.event_title || "ইভেন্ট"}</h2>
@@ -106,9 +106,18 @@ export function RegistrationCard({ registration, compact = false, showTicketLink
           ))}
         </dl>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="no-print flex flex-wrap gap-2">
+          {showDownload && (
+            // The browser's print dialog saves the ticket as a PDF ("Save as PDF").
+            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              পিডিএফ ডাউনলোড
+            </button>
+          )}
           {registration.event_slug && <Link className="btn btn-ghost" href={`/events/${registration.event_slug}`}>ইভেন্টের পাতা</Link>}
-          {showTicketLink && <Link className="btn btn-primary" href={`/tickets/${registration.public_code}`}>পুরো টিকিট</Link>}
+          {showTicketLink && <Link className="btn btn-ghost" href={`/tickets/${registration.public_code}`}>পুরো টিকিট</Link>}
         </div>
       </div>
     </article>
