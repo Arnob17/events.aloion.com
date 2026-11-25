@@ -14,8 +14,15 @@ const monthShort = fmt({ month: "short" });
 const shortDate = fmt({ weekday: "short", day: "numeric", month: "short" });
 const timeOfDay = fmt({ hour: "numeric", minute: "2-digit" });
 
-/** One solid colour per event in the slider's countdown, so each slide is told apart at a glance. */
-const TONES = ["#0e6b56", "#a3620a", "#1f4f8c", "#7a2e66", "#4f6420", "#0f6e7a"];
+/** One colour per slide: [base, darker edge, light accent for the status box and category]. */
+const TONES: [string, string, string][] = [
+  ["#0e6b56", "#073f33", "#9be8cc"],
+  ["#a3620a", "#5f3905", "#ffd98a"],
+  ["#1f4f8c", "#102c52", "#b3d2ff"],
+  ["#7a2e66", "#45173a", "#f7b8e2"],
+  ["#4f6420", "#2c3911", "#d8ec9a"],
+  ["#0f6e7a", "#083f46", "#a3ebf2"],
+];
 
 const HEADLINE_WORDS = ["অলিম্পিয়াড", "বিজ্ঞান উৎসব", "বিতর্ক", "কর্মশালা", "হ্যাকাথন", "কুইজ"];
 
@@ -198,11 +205,11 @@ function RotatingWord({ words }: { words: string[] }) {
  * A banner of another shape sits on a soft neutral frame. With no banner (or one that fails to
  * load) a quiet placeholder shows the category.
  */
-function Banner({ event, className = "" }: { event: EventCard; className?: string }) {
+function Banner({ event, className = "", cover = false }: { event: EventCard; className?: string; cover?: boolean }) {
   const [failed, setFailed] = useState(false);
   if (event.cover_image_url && !failed) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={mediaURL(event.cover_image_url)} alt="" loading="lazy" onError={() => setFailed(true)} className={`bg-[#efede7] object-contain ${className}`} />;
+    return <img src={mediaURL(event.cover_image_url)} alt="" loading="lazy" onError={() => setFailed(true)} className={`${cover ? "object-cover" : "bg-[#efede7] object-contain"} ${className}`} />;
   }
   return (
     <div className={`grid place-items-center bg-[var(--pine-soft)] ${className}`}>
@@ -211,15 +218,19 @@ function Banner({ event, className = "" }: { event: EventCard; className?: strin
   );
 }
 
-function StatusLine({ event }: { event: EventCard }) {
+/** Registration state in a small box. On a coloured slide it takes that slide's accent colour. */
+function StatusBox({ event, accent }: { event: EventCard; accent?: string }) {
   const state = registrationWindow(event);
-  if (state === "open") {
-    const left = timeLeft(event.registration_closes_at);
-    return <p className="flex items-center gap-1.5 text-sm font-semibold text-[var(--pine)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--pine)]" />রেজিস্ট্রেশন চলছে{left ? ` · ${left}` : ""}</p>;
+  const left = timeLeft(event.registration_closes_at);
+  const text = state === "open" ? `রেজিস্ট্রেশন চলছে${left ? ` · ${left}` : ""}` : state === "not_yet" ? "রেজিস্ট্রেশন শিগগির খুলবে" : state === "ended" ? "রেজিস্ট্রেশন শেষ" : statusLabel(event.status);
+  const box = "inline-flex rounded-[0.45rem] px-2.5 py-1 text-[0.8rem] font-bold leading-tight";
+  if (accent) {
+    return state === "open"
+      ? <span className={`${box} text-[var(--ink)]`} style={{ background: accent }}>{text}</span>
+      : <span className={`${box} bg-white/15 text-white`}>{text}</span>;
   }
-  if (state === "not_yet") return <p className="flex items-center gap-1.5 text-sm font-semibold text-[var(--info)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--info)]" />রেজিস্ট্রেশন শিগগির খুলবে</p>;
-  if (state === "ended") return <p className="flex items-center gap-1.5 text-sm font-semibold text-[var(--warn)]"><span className="h-1.5 w-1.5 rounded-full bg-[var(--warn)]" />রেজিস্ট্রেশন শেষ</p>;
-  return <p className="text-sm font-semibold muted">{statusLabel(event.status)}</p>;
+  const tone = state === "open" ? "bg-[var(--pine-soft)] text-[var(--pine-deep)]" : state === "not_yet" ? "bg-[var(--info-soft)] text-[var(--info)]" : state === "ended" ? "bg-[var(--warn-soft)] text-[var(--warn)]" : "bg-[var(--paper-2)] text-[var(--muted)]";
+  return <span className={`${box} ${tone}`}>{text}</span>;
 }
 
 /** Event card: the full banner on top, the details underneath it. */
@@ -237,8 +248,8 @@ function EventTile({ event }: { event: EventCard }) {
         )}
       </div>
       <div className="flex flex-1 flex-col p-4">
-        <StatusLine event={event} />
-        <h3 className="mt-1.5 line-clamp-2 text-lg font-bold leading-snug group-hover:text-[var(--pine-deep)]">{event.title}</h3>
+        <div><StatusBox event={event} /></div>
+        <h3 className="mt-2 line-clamp-2 text-lg font-bold leading-snug group-hover:text-[var(--pine-deep)]">{event.title}</h3>
         <p className="mt-0.5 text-sm muted">{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
         {event.summary && <p className="mt-2 line-clamp-2 text-sm text-[var(--ink-2)]">{event.summary}</p>}
         <div className="mt-auto pt-4">
@@ -289,9 +300,9 @@ function EventSlider({ events }: { events: EventCard[] }) {
 
   return (
     <div className="mx-auto mt-12 max-w-4xl" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)} onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
-      <div className="relative overflow-hidden rounded-[1.1rem] border border-[var(--line)] bg-white shadow-[var(--shadow)]">
+      <div className="relative overflow-hidden rounded-[1.1rem] shadow-[0_22px_44px_-22px_rgba(0,0,0,0.5)]">
         {prev !== null && (
-          <div key={`out-${step}`} className={`pointer-events-none absolute inset-0 bg-white ${back ? "slide-out-back" : "slide-out"}`} aria-hidden="true">
+          <div key={`out-${step}`} className={`pointer-events-none absolute inset-0 ${back ? "slide-out-back" : "slide-out"}`} aria-hidden="true">
             <Slide event={events[prev % events.length]} tone={TONES[prev % TONES.length]} now={now} />
           </div>
         )}
@@ -310,7 +321,7 @@ function EventSlider({ events }: { events: EventCard[] }) {
               aria-label={item.title}
               onClick={() => go(i)}
               className={`h-1.5 rounded-full transition-all ${i === index ? "w-6" : "w-1.5 bg-[var(--ink)]/20 hover:bg-[var(--ink)]/40"}`}
-              style={i === index ? { background: TONES[i % TONES.length] } : undefined}
+              style={i === index ? { background: TONES[i % TONES.length][0] } : undefined}
             />
           ))}
         </div>
@@ -320,7 +331,8 @@ function EventSlider({ events }: { events: EventCard[] }) {
 }
 
 /** One slide: the banner on the left, the details and a countdown in the event's colour on the right. */
-function Slide({ event, tone, now, link = false }: { event: EventCard; tone: string; now: number; link?: boolean }) {
+function Slide({ event, tone, now, link = false }: { event: EventCard; tone: [string, string, string]; now: number; link?: boolean }) {
+  const [base, edge, accent] = tone;
   const start = event.starts_at ? new Date(event.starts_at) : null;
   const left = start ? Math.max(0, start.getTime() - now) : 0;
   const parts = [
@@ -330,27 +342,33 @@ function Slide({ event, tone, now, link = false }: { event: EventCard; tone: str
     [Math.floor(left / 1000) % 60, "সেকেন্ড"],
   ] as const;
   const body = (
-    <div className="grid text-left md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      <Banner event={event} className="aspect-[16/9] w-full md:aspect-auto md:h-full md:min-h-[15rem]" />
+    <div className="grid h-full text-left text-white md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" style={{ background: `linear-gradient(135deg, ${base} 0%, ${edge} 100%)` }}>
+      <Banner event={event} cover className="aspect-[16/9] h-full w-full md:aspect-auto md:min-h-[16rem]" />
       <div className="flex flex-col p-5 sm:p-6">
-        <p className="text-sm font-semibold" style={{ color: tone }}>{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
+        <p className="text-sm font-semibold" style={{ color: accent }}>{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
         <h2 className="serif mt-1 text-2xl leading-snug break-words">{event.title}</h2>
-        <p className="mt-1 text-sm muted">{[when(event.starts_at, event.timezone), place(event)].join(" · ")}</p>
-        <div className="mt-2"><StatusLine event={event} /></div>
+        <p className="mt-1 text-sm text-white/75">{[when(event.starts_at, event.timezone), place(event)].join(" · ")}</p>
+        <div className="mt-3"><StatusBox event={event} accent={accent} /></div>
         <div className="mt-auto pt-5">
+          <div className="border-t border-white/20 pt-4">
           {left > 0 ? (
-            <div className="grid grid-cols-4 gap-1.5" aria-label="শুরু হতে বাকি">
-              {parts.map(([value, label]) => (
-                <div key={label} className="rounded-[0.6rem] px-1 py-2 text-center text-white" style={{ background: tone }}>
-                  <p className="text-xl font-bold leading-none tabular-nums">{num(value).padStart(2, "০")}</p>
-                  <p className="mt-1 text-[0.68rem] text-white/75">{label}</p>
-                </div>
-              ))}
-            </div>
-          ) : <p className="rounded-[0.6rem] px-4 py-2.5 text-center font-bold text-white" style={{ background: tone }}>এখন চলছে</p>}
+            <>
+              <p className="text-xs text-white/65">শুরু হতে বাকি</p>
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1" aria-live="off">
+                {parts.map(([value, label], i) => (
+                  // Days always show; the smaller units drop once there is a day or more to go on small screens.
+                  <span key={label} className={`whitespace-nowrap ${i === 3 ? "hidden sm:inline" : ""}`}>
+                    <span className="serif text-3xl tabular-nums">{i === 0 ? num(value) : num(value).padStart(2, "০")}</span>
+                    <span className="ml-1 text-sm text-white/70">{label}</span>
+                  </span>
+                ))}
+              </p>
+            </>
+          ) : <p className="serif text-2xl">এখন চলছে</p>}
+          </div>
         </div>
       </div>
     </div>
   );
-  return link ? <Link href={`/events/${event.slug}`} className="block">{body}</Link> : body;
+  return link ? <Link href={`/events/${event.slug}`} className="block h-full">{body}</Link> : body;
 }
