@@ -112,7 +112,7 @@ export function EventDesk({ id, section }: { id: string; section: string }) {
               if (items.length === 0) return null;
               return (
                 <div key={group} className="mb-5">
-                  <p className="mb-1.5 px-3 text-xs font-bold tracking-wide muted">{group === "run" ? "পরিচালনা" : "সেটআপ"}</p>
+                  <p className="mb-1.5 px-3 text-xs font-bold muted">{group === "run" ? "পরিচালনা" : "সেটআপ"}</p>
                   {items.map((item) => {
                     const active = item.key === current.key;
                     return (

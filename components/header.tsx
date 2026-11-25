@@ -25,10 +25,12 @@ export function Header() {
 
   if (path.includes("/check-in") || path.endsWith("/print")) return null;
 
+  // On the home page the header is see-through so the green wash runs behind it.
+  const home = path === "/";
   const links = [...LINKS, ...(user?.role === "admin" ? [{ href: "/admin/events", label: "অ্যাডমিন রিভিউ", match: (p: string) => p.startsWith("/admin") }] : [])];
 
   return (
-    <header className="no-print sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--paper)]/90 backdrop-blur supports-[backdrop-filter]:bg-[var(--paper)]/80">
+    <header className={`no-print sticky top-0 z-40 border-b backdrop-blur ${home ? "border-transparent bg-[#e4f1ea]/70" : "border-[var(--line)] bg-[var(--paper)]/90 supports-[backdrop-filter]:bg-[var(--paper)]/80"}`}>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
         <Link href="/" className="min-w-0 shrink-0" aria-label="আলোআয়ন ইভেন্ট, হোম">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -64,7 +66,7 @@ export function Header() {
         </div>
       </div>
       {open && (
-        <nav className="border-t border-[var(--line)] bg-[var(--paper)] px-4 py-2 md:hidden" aria-label="মোবাইল মেনু">
+        <nav className="border-t border-[var(--line)] bg-[var(--paper)] px-4 py-2 text-[var(--ink)] md:hidden" aria-label="মোবাইল মেনু">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -104,7 +106,7 @@ function AccountMenu({ user, logout }: { user: User; logout: () => void }) {
   return (
     <div ref={ref} className="relative">
       <button
-        className="flex items-center gap-2 rounded-full border border-[var(--line-strong)] bg-white py-1 pr-3 pl-1 text-sm font-semibold shadow-sm hover:bg-[var(--paper)]"
+        className="flex items-center gap-2 rounded-full border border-[var(--line-strong)] bg-white py-1 pr-3 pl-1 text-sm font-semibold text-[var(--ink)] shadow-sm hover:bg-[var(--paper)]"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
@@ -114,7 +116,7 @@ function AccountMenu({ user, logout }: { user: User; logout: () => void }) {
         <span aria-hidden="true" className="text-xs muted">▾</span>
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 mt-2 w-64 overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-white shadow-[var(--shadow-lg)]">
+        <div role="menu" className="absolute right-0 mt-2 w-64 text-[var(--ink)] overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-white shadow-[var(--shadow-lg)]">
           <div className="border-b border-[var(--line)] px-4 py-3">
             <p className="truncate font-semibold">{personName(user)}</p>
             <p className="truncate text-sm muted">{user.email}</p>

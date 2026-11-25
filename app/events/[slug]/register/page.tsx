@@ -320,7 +320,7 @@ function PaymentStep({ event, total, method, trx, onMethod, onTrx }: { event: Pu
           <p className="text-sm muted">{wallet?.label}-এ “সেন্ড মানি” করুন এই নম্বরে</p>
           {number ? (
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <p className="font-mono text-2xl tracking-wide">{number}</p>
+              <p className="font-mono text-2xl">{number}</p>
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(number)}>কপি</button>
             </div>
           ) : <p className="mt-1 text-sm">অর্গানাইজার এখনও {wallet?.label} নম্বর দেননি। অন্য ওয়ালেট বেছে নিন বা অর্গানাইজারের সঙ্গে যোগাযোগ করুন।</p>}

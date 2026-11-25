@@ -1,9 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@600;700&display=swap');
 @import "tailwindcss";
 
 /* Design tokens. Warm paper background, white surfaces, one green accent, gold for highlights. */
 :root {
-  --font-geist: "Hind Siliguri", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  /* Noto Sans Bengali: clear Bangla digits (Hind Siliguri's ১ reads like "‹") and real 400–700 weights. */
+  --font-geist: "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
   --font-newsreader: "Noto Serif Bengali", Georgia, serif;
   --paper: #f6f4ef;
   --paper-2: #efece4;
@@ -66,9 +67,13 @@ body {
   color: var(--muted);
 }
 
-:focus-visible {
-  outline: 2px solid var(--pine);
-  outline-offset: 2px;
+/* In the base layer so a component can turn it off with outline-none
+   (the home search box shows focus on its wrapper instead). */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--pine);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
@@ -527,6 +532,47 @@ a.card:hover {
   line-height: 1.8;
 }
 
+}
+
+/* Home: a soft green wash that fades down the page into the paper colour. */
+.home-bg {
+  background:
+    radial-gradient(70rem 36rem at 50% -8rem, rgba(46, 160, 120, 0.22), transparent 70%),
+    radial-gradient(40rem 30rem at 92% 30rem, rgba(226, 163, 27, 0.08), transparent 70%),
+    linear-gradient(180deg, #e4f1ea 0%, #edf4ef 22rem, #f3f4ef 48rem, var(--paper) 80rem);
+}
+
+/* Headline word: slides up into place. */
+.word-in {
+  animation: word-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes word-in {
+  from { opacity: 0; transform: translateY(60%); filter: blur(4px); }
+}
+
+/* Flip board: each new event flips down into view. */
+.flip-in {
+  transform-origin: 50% 0;
+  animation: flip-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes flip-in {
+  from { opacity: 0; transform: rotateX(-75deg); }
+}
+
+.rail {
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1rem;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.rail > * {
+  scroll-snap-align: start;
 }
 
 #qr-reader,

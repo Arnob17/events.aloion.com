@@ -306,7 +306,7 @@ function Details({ workspace, row }: { workspace: Workspace; row: Registration }
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-1.5 text-xs font-bold tracking-wide muted">{title}</h3>
+      <h3 className="mb-1.5 text-xs font-bold muted">{title}</h3>
       <dl className="divide-y divide-[var(--line)] rounded-[var(--radius-sm)] border border-[var(--line)]">{children}</dl>
     </section>
   );

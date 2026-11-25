@@ -1,360 +1,405 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { FieldLabel } from "@/components/field-label";
-import {
-  CalendarIcon,
-  MapPinIcon,
-  SearchIcon,
-  SparklesIcon,
-  TicketIcon,
-  UsersIcon,
-} from "@/components/icons";
+import { useEffect, useMemo, useState } from "react";
+import { MapPinIcon, SearchIcon, TicketIcon } from "@/components/icons";
 import { api, mediaURL } from "@/lib/api";
-import { CATEGORIES, categoryLabel, place, registrationWindow, statusLabel, timeLeft, whenDay } from "@/lib/format";
+import { CATEGORIES, categoryLabel, num, place, registrationWindow, statusLabel, timeLeft, when } from "@/lib/format";
 import type { EventCard } from "@/lib/types";
 
-function parseDateParts(dateStr?: string | null) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return null;
-  const day = new Intl.DateTimeFormat("bn-BD", { day: "numeric", timeZone: "Asia/Dhaka" }).format(d);
-  const month = new Intl.DateTimeFormat("bn-BD", { month: "short", timeZone: "Asia/Dhaka" }).format(d);
-  return { day, month };
+const TZ = "Asia/Dhaka";
+const fmt = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("bn-BD", { timeZone: TZ, ...options });
+const dayNum = fmt({ day: "numeric" });
+const weekday = fmt({ weekday: "short" });
+const monthShort = fmt({ month: "short" });
+const monthYear = fmt({ month: "long", year: "numeric" });
+const timeOfDay = fmt({ hour: "numeric", minute: "2-digit" });
+
+/** Upcoming means it has not ended yet (or has no date); everything else is past. */
+function isUpcoming(event: EventCard, now: number) {
+  if (event.status === "completed" || event.status === "cancelled") return false;
+  const end = event.ends_at || event.starts_at;
+  return !end || new Date(end).getTime() >= now;
 }
 
 export default function DiscoverPage() {
-  const [events, setEvents] = useState<EventCard[]>([]);
+  const [events, setEvents] = useState<EventCard[] | null>(null);
+  const [input, setInput] = useState("");
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
-  const [location, setLocation] = useState("");
-  const [registration, setRegistration] = useState("");
+  const [openOnly, setOpenOnly] = useState(false);
   const [error, setError] = useState("");
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams();
+    const timer = window.setTimeout(() => setQ(input.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [input]);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: "48" });
     if (q) params.set("q", q);
     if (category) params.set("category", category);
-    if (location) params.set("location", location);
-    if (registration) params.set("registration", registration);
-    const query = params.toString();
-    setLoaded(false);
+    if (openOnly) params.set("registration", "open");
+    let stale = false;
+    setEvents(null);
     api
-      .events(query ? `?${query}` : "")
-      .then((data) => setEvents(data.events || []))
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoaded(true));
-  }, [q, category, location, registration]);
+      .events(`?${params}`)
+      .then((data) => !stale && setEvents(data.events || []))
+      .catch((err: Error) => !stale && (setError(err.message), setEvents([])));
+    return () => {
+      stale = true;
+    };
+  }, [q, category, openOnly]);
 
-  const featured = events.find((event) => event.featured);
-  const rest = events.filter((event) => event.id !== featured?.id);
-  const isFiltered = Boolean(q || category || location || registration);
+  const now = Date.now();
+  const filtered = Boolean(q || category || openOnly);
+  const upcoming = useMemo(
+    () => (events || []).filter((event) => isUpcoming(event, now)).sort((a, b) => time(a) - time(b)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events],
+  );
+  const past = useMemo(
+    () => (events || []).filter((event) => !isUpcoming(event, now)).sort((a, b) => time(b) - time(a)).slice(0, 6),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events],
+  );
+  const months = groupByMonth(upcoming);
+  // The flip board walks through the next events that have a date, soonest first.
+  const flips = upcoming.filter((event) => event.starts_at).slice(0, 6);
+  // The poster rail shows what is coming up first; open registrations lead.
+  const rail = [...upcoming].sort((a, b) => Number(registrationWindow(b) === "open") - Number(registrationWindow(a) === "open") || time(a) - time(b)).slice(0, 10);
+
+  function reset() {
+    setInput("");
+    setCategory("");
+    setOpenOnly(false);
+  }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-20">
-      {/* Hero section */}
-      <header className="py-10 sm:py-14">
-        <p className="text-sm font-semibold text-[var(--pine)]">আলোআয়ন ইভেন্ট</p>
-        <h1 className="serif mt-1 text-4xl leading-[1.15] sm:text-5xl">
-          স্কুল, কলেজ ও কমিউনিটির ইভেন্ট
-        </h1>
-        <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
-          বিজ্ঞান উৎসব, অলিম্পিয়াড, কনফারেন্স, কর্মশালা ও প্রতিযোগিতা। অনলাইনে সময়সূচি ও সেগমেন্ট দেখে রেজিস্ট্রেশন সম্পন্ন করুন এবং ডিজিটাল টিকিট সংগ্রহ করুন।
-        </p>
+    <main className="home-bg pb-0">
+      <section className="px-4 pt-16 pb-10 sm:pt-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <h1 className="serif text-[2.5rem] leading-[1.15] text-[var(--ink)] sm:text-6xl sm:leading-[1.12]">
+            আপনার পরের
+            <RotatingWord words={HEADLINE_WORDS} />
+            এখানেই শুরু
+          </h1>
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed muted">
+            সেগমেন্ট বেছে রেজিস্ট্রেশন করুন, বিকাশ বা নগদে ফি দিন। টিকিটের কিউআর থাকবে আপনার ফোনে।
+          </p>
 
-        {/* Quick Category Chips */}
-        <div className="mt-6 flex flex-wrap items-center gap-1.5 pt-2">
-          <button
-            type="button"
-            onClick={() => setCategory("")}
-            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-              category === ""
-                ? "bg-[var(--ink)] text-[var(--paper)]"
-                : "border border-[var(--line)] bg-white text-[var(--ink)] hover:bg-[var(--paper)]"
-            }`}
-          >
-            সব ইভেন্ট
-          </button>
-          {CATEGORIES.slice(0, 7).map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => setCategory(category === item.value ? "" : item.value)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                category === item.value
-                  ? "bg-[var(--pine)] text-white"
-                  : "border border-[var(--line)] bg-white text-[var(--ink)] hover:bg-[var(--paper)]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+          <form className="mx-auto mt-9 flex max-w-xl items-center gap-2 rounded-[1rem] border border-[var(--line-strong)] bg-white/85 p-1.5 pl-4 text-left shadow-[var(--shadow)] backdrop-blur focus-within:border-[var(--pine)]" onSubmit={(event) => { event.preventDefault(); setQ(input.trim()); document.getElementById("programmes")?.scrollIntoView({ behavior: "smooth" }); }}>
+            <SearchIcon className="h-5 w-5 shrink-0 muted" />
+            <input
+              className="min-w-0 flex-1 bg-transparent py-2.5 text-base outline-none placeholder:text-[#9a948a]"
+              placeholder="ইভেন্ট, বিষয় বা প্রতিষ্ঠানের নাম"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              aria-label="ইভেন্ট খুঁজুন"
+            />
+            <button className="btn btn-primary shrink-0">খুঁজুন</button>
+          </form>
 
-        {/* Filters */}
-        <form
-          className="card mt-6 p-4 shadow-[var(--shadow)]"
-          onSubmit={(event) => event.preventDefault()}
-        >
-          <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <FieldLabel label="ইভেন্ট সার্চ">
-              <div className="relative">
-                <input
-                  className="field pr-9"
-                  placeholder="ইভেন্টের নাম বা বিষয়..."
-                  value={q}
-                  onChange={(event) => setQ(event.target.value)}
-                />
-                <SearchIcon className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-[var(--muted)]" />
-              </div>
-            </FieldLabel>
-            <FieldLabel label="ক্যাটাগরি">
-              <select
-                className="field"
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-              >
-                <option value="">সব ক্যাটাগরি</option>
-                {CATEGORIES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </FieldLabel>
-            <FieldLabel label="লোকেশন">
-              <select
-                className="field"
-                value={location}
-                onChange={(event) => setLocation(event.target.value)}
-              >
-                <option value="">যেকোনো লোকেশন</option>
-                <option value="physical">ফিজিক্যাল (মাঠ বা অডিটোরিয়াম)</option>
-                <option value="online">অনলাইন</option>
-                <option value="hybrid">হাইব্রিড</option>
-              </select>
-            </FieldLabel>
-            <FieldLabel label="রেজিস্ট্রেশন">
-              <select
-                className="field"
-                value={registration}
-                onChange={(event) => setRegistration(event.target.value)}
-              >
-                <option value="">সব রেজিস্ট্রেশন</option>
-                <option value="open">রেজিস্ট্রেশন চলছে</option>
-                <option value="closed">রেজিস্ট্রেশন বন্ধ</option>
-              </select>
-            </FieldLabel>
-          </div>
-
-          {isFiltered && (
-            <div className="mt-3 flex items-center justify-between border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]">
-              <span>ফিল্টার সক্রিয়</span>
+          <div className="mt-5 flex flex-wrap justify-center gap-2" role="group" aria-label="ক্যাটাগরি">
+            {CATEGORIES.slice(0, 8).map((item) => (
               <button
+                key={item.value}
                 type="button"
-                onClick={() => {
-                  setQ("");
-                  setCategory("");
-                  setLocation("");
-                  setRegistration("");
-                }}
-                className="text-[var(--pine)] hover:underline"
+                aria-pressed={category === item.value}
+                onClick={() => setCategory(category === item.value ? "" : item.value)}
+                className={`rounded-full border px-3.5 py-1 text-sm font-semibold transition ${category === item.value ? "border-[var(--pine)] bg-[var(--pine)] text-white" : "border-[var(--line-strong)] bg-white/60 text-[var(--ink-2)] hover:border-[var(--pine)] hover:text-[var(--pine-deep)]"}`}
               >
-                সব ফিল্টার মুছুন
+                {item.label}
               </button>
-            </div>
-          )}
-        </form>
-      </header>
-
-      {error && <p className="mt-6 text-sm text-red-700">{error}</p>}
-
-      {/* Featured Event Spotlight */}
-      {featured && (
-        <section className="mt-8">
-          <h2 className="serif text-2xl font-bold">নির্বাচিত ইভেন্ট</h2>
-          <Link
-            href={`/events/${featured.slug}`}
-            className="card mt-3 grid overflow-hidden transition hover:shadow-md md:grid-cols-[1.1fr_1fr]"
-          >
-            {featured.cover_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={mediaURL(featured.cover_image_url)}
-                alt=""
-                className="h-64 w-full object-cover md:h-full"
-              />
-            ) : (
-              <div className="grid h-64 place-items-center bg-[var(--pine)]/15 text-[var(--pine)] md:h-full">
-                <TicketIcon className="h-16 w-16" />
-              </div>
-            )}
-            <div className="flex flex-col justify-between p-6 sm:p-8">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-[var(--paper)] px-2.5 py-0.5 text-xs font-semibold text-[var(--pine)]">
-                    {categoryLabel(featured.category)}
-                  </span>
-                  <WindowBadge event={featured} />
-                </div>
-                <h2 className="serif mt-3 text-2xl font-bold leading-tight break-words sm:text-3xl">
-                  {featured.title}
-                </h2>
-                {featured.summary && (
-                  <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-                    {featured.summary}
-                  </p>
-                )}
-              </div>
-
-              <div className="mt-6 border-t border-[var(--line)] pt-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--muted)]">
-                  <div className="flex items-center gap-1.5">
-                    <CalendarIcon className="h-4 w-4 text-[var(--pine)]" />
-                    <span>{whenDay(featured.starts_at, featured.timezone)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MapPinIcon className="h-4 w-4 text-[var(--pine)]" />
-                    <span>{place(featured)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 font-semibold text-[var(--ink)]">
-                    <UsersIcon className="h-4 w-4 text-[var(--pine)]" />
-                    <span>{(featured.registration_count || 0).toLocaleString("bn-BD")} জন রেজিস্টার্ড</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-        </section>
-      )}
-
-      {/* Event Grid */}
-      {rest.length > 0 && (
-        <section className="mt-12">
-          <div className="flex items-center justify-between">
-            <h2 className="serif text-2xl sm:text-3xl">
-              {featured ? "অন্যান্য ইভেন্ট" : "সকল ইভেন্ট"}
-            </h2>
-            <span className="text-xs text-[var(--muted)]">
-              {events.length.toLocaleString("bn-BD")}টি ইভেন্ট
-            </span>
-          </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {rest.map((event) => (
-              <EventTile key={event.id} event={event} />
             ))}
           </div>
+        </div>
+
+        {!filtered && flips.length > 0 && <FlipBoard events={flips} />}
+      </section>
+
+      {rail.length > 0 && (
+        <section className="pb-4" aria-label="প্রোগ্রাম">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mb-4 flex items-end justify-between">
+              <h2 className="serif text-2xl sm:text-3xl">প্রোগ্রাম</h2>
+              <a href="#programmes" className="text-sm font-semibold text-[var(--pine)]">পুরো সূচি ↓</a>
+            </div>
+          </div>
+          <div className="rail mx-auto flex max-w-6xl gap-4 overflow-x-auto px-4 pb-4">
+            {rail.map((event, index) => <Poster key={event.id} event={event} index={index} />)}
+          </div>
         </section>
       )}
 
-      {/* Empty State */}
-      {loaded && events.length === 0 && (
-        <div className="card mt-10 p-12 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--pine)]/10 text-[var(--pine)]">
-            <CalendarIcon className="h-6 w-6" />
+      <section id="programmes" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-12">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--line)] pb-4">
+          <div>
+            <h2 className="serif text-3xl">{filtered ? "খোঁজের ফল" : "সামনের ইভেন্ট"}</h2>
+            <p className="mt-1 text-sm muted">
+              {events === null ? "খোঁজা হচ্ছে…" : `${num(upcoming.length)}টি ইভেন্ট`}
+              {category && ` · ${categoryLabel(category)}`}
+              {q && ` · “${q}”`}
+            </p>
           </div>
-          <h3 className="serif mt-4 text-xl">এই ক্যাটাগরিতে কোনো ইভেন্ট পাওয়া যায়নি</h3>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            অনুগ্রহ করে অন্য শব্দ বা ভিন্ন ফিল্টার নির্বাচন করে পুনরায় অনুসন্ধান করুন।
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setQ("");
-              setCategory("");
-              setLocation("");
-              setRegistration("");
-            }}
-            className="btn btn-ghost mt-4 !text-xs"
-          >
-            ফিল্টার রিসেট করুন
-          </button>
+          <div className="flex items-center gap-3">
+            {filtered && <button type="button" className="text-sm font-semibold text-[var(--pine)]" onClick={reset}>সব দেখুন</button>}
+            <div className="segmented" role="group" aria-label="রেজিস্ট্রেশন">
+              <button type="button" aria-pressed={!openOnly} onClick={() => setOpenOnly(false)}>সব</button>
+              <button type="button" aria-pressed={openOnly} onClick={() => setOpenOnly(true)}>রেজিস্ট্রেশন চলছে</button>
+            </div>
+          </div>
         </div>
-      )}
+
+        {error && <p className="notice notice-error mt-6">{error}</p>}
+
+        {events === null ? (
+          <div className="mt-6 space-y-3">{[0, 1, 2].map((n) => <div key={n} className="skeleton h-28" />)}</div>
+        ) : upcoming.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="serif text-2xl">{filtered ? "এই খোঁজে কোনো ইভেন্ট নেই" : "এই মুহূর্তে সামনে কোনো ইভেন্ট নেই"}</p>
+            <p className="mt-2 muted">{filtered ? "অন্য শব্দ বা ক্যাটাগরি দিয়ে দেখুন।" : "নতুন ইভেন্ট এলে এখানে দেখাবে।"}</p>
+            {filtered && <button type="button" className="btn btn-ghost mt-5" onClick={reset}>সব ইভেন্ট দেখুন</button>}
+          </div>
+        ) : (
+          months.map(([label, rows]) => (
+            <div key={label} className="mt-10 first:mt-8">
+              <h3 className="mb-3 text-sm font-bold text-[var(--pine)]">{label}</h3>
+              <ul className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+                {rows.map((event) => <EventRow key={event.id} event={event} />)}
+              </ul>
+            </div>
+          ))
+        )}
+
+        {past.length > 0 && !openOnly && (
+          <div className="mt-16">
+            <h2 className="serif text-2xl">শেষ হওয়া ইভেন্ট</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {past.map((event) => (
+                <Link key={event.id} href={`/events/${event.slug}`} className="group flex items-center gap-3 rounded-[var(--radius)] p-2 hover:bg-white">
+                  <Thumb event={event} className="h-14 w-20 opacity-80 grayscale-[40%] group-hover:opacity-100 group-hover:grayscale-0" />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{event.title}</p>
+                    <p className="text-sm muted">{event.starts_at ? fmt({ day: "numeric", month: "short", year: "numeric" }).format(new Date(event.starts_at)) : statusLabel(event.status)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
     </main>
   );
 }
 
-function WindowBadge({ event }: { event: EventCard }) {
+function time(event: EventCard) {
+  return event.starts_at ? new Date(event.starts_at).getTime() : Number.MAX_SAFE_INTEGER;
+}
+
+function groupByMonth(rows: EventCard[]): [string, EventCard[]][] {
+  const groups = new Map<string, EventCard[]>();
+  for (const event of rows) {
+    const label = event.starts_at ? monthYear.format(new Date(event.starts_at)) : "তারিখ শিগগির জানানো হবে";
+    groups.set(label, [...(groups.get(label) || []), event]);
+  }
+  return [...groups.entries()];
+}
+
+function RegistrationLine({ event }: { event: EventCard }) {
   const state = registrationWindow(event);
   if (state === "open") {
     const left = timeLeft(event.registration_closes_at);
-    return <span className="badge badge-green">রেজিস্ট্রেশন চলছে{left ? ` · ${left}` : ""}</span>;
+    return <span className="font-semibold text-[var(--pine)]">রেজিস্ট্রেশন চলছে{left ? ` · ${left}` : ""}</span>;
   }
-  if (state === "not_yet") return <span className="badge badge-blue">শিগগির রেজিস্ট্রেশন</span>;
-  if (state === "ended") return <span className="badge badge-amber">রেজিস্ট্রেশন শেষ</span>;
-  return <span className="badge badge-gray">{statusLabel(event.status)}</span>;
+  if (state === "not_yet") return <span className="font-semibold text-[var(--info)]">রেজিস্ট্রেশন শিগগির খুলবে</span>;
+  if (state === "ended") return <span className="muted">রেজিস্ট্রেশন শেষ</span>;
+  return <span className="muted">{statusLabel(event.status)}</span>;
 }
 
-function EventTile({ event }: { event: EventCard }) {
-  const dateParts = parseDateParts(event.starts_at);
+function EventRow({ event }: { event: EventCard }) {
+  const start = event.starts_at ? new Date(event.starts_at) : null;
+  return (
+    <li>
+      <Link href={`/events/${event.slug}`} className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-4 py-5 sm:grid-cols-[4.5rem_minmax(0,1fr)_9rem] sm:gap-6">
+        <div className="text-center">
+          {start ? (
+            <>
+              <p className="text-xs font-semibold muted">{weekday.format(start)}</p>
+              <p className="serif text-3xl leading-none sm:text-4xl">{dayNum.format(start)}</p>
+              <p className="mt-1 text-xs font-semibold text-[var(--pine)]">{monthShort.format(start)}</p>
+            </>
+          ) : <p className="text-xs font-semibold muted">শিগগির</p>}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold muted">{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
+          <h4 className="mt-0.5 text-lg font-bold leading-snug break-words group-hover:text-[var(--pine)] sm:text-xl">{event.title}</h4>
+          {event.summary && <p className="mt-1 line-clamp-1 text-sm muted">{event.summary}</p>}
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            {start && <span>{timeOfDay.format(start)}</span>}
+            <span className="inline-flex items-center gap-1 muted"><MapPinIcon className="h-3.5 w-3.5" />{place(event)}</span>
+            <RegistrationLine event={event} />
+          </p>
+        </div>
+        <Thumb event={event} className="hidden aspect-[4/3] w-full sm:block" />
+      </Link>
+    </li>
+  );
+}
 
+function Thumb({ event, className = "" }: { event: EventCard; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (event.cover_image_url && !failed) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={mediaURL(event.cover_image_url)} alt="" loading="lazy" onError={() => setFailed(true)} className={`shrink-0 rounded-[var(--radius-sm)] object-cover transition ${className}`} />;
+  }
+  return (
+    <div className={`grid shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--paper-2)] text-[var(--pine)] ${className}`}>
+      <TicketIcon className="h-6 w-6 opacity-50" />
+    </div>
+  );
+}
+
+/** Deep tones for posters and the flip board: [base, darker edge, light accent]. */
+const TONES: [string, string, string][] = [
+  ["#0e6b56", "#063d31", "#7fe0bf"],
+  ["#a3620a", "#5c3604", "#ffd27a"],
+  ["#1f4f8c", "#0f2a4f", "#9cc4ff"],
+  ["#7a2e66", "#431637", "#f5a6dc"],
+  ["#4f6420", "#2a370f", "#cfe68a"],
+  ["#0f6e7a", "#073d45", "#8fe3ec"],
+];
+
+const HEADLINE_WORDS = ["অলিম্পিয়াড", "বিজ্ঞান উৎসব", "বিতর্ক", "কর্মশালা", "হ্যাকাথন", "কুইজ"];
+
+/** One word of the headline that slides to the next every few seconds. */
+function RotatingWord({ words }: { words: string[] }) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setIndex((value) => (value + 1) % words.length), 2600);
+    return () => window.clearInterval(timer);
+  }, [words.length]);
+  return (
+    <span className="relative mx-auto my-1 block h-[1.3em] overflow-hidden" aria-live="polite">
+      <span key={index} className="word-in block text-[var(--pine)]">{words[index]}</span>
+    </span>
+  );
+}
+
+/**
+ * A board that flips to the next upcoming event every few seconds, with a live countdown.
+ * Hovering or focusing it holds the current event; the dots jump to one.
+ */
+function FlipBoard({ events }: { events: EventCard[] }) {
+  const [index, setIndex] = useState(0);
+  const [held, setHeld] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(tick);
+  }, []);
+  useEffect(() => {
+    if (held || events.length < 2) return;
+    const timer = window.setInterval(() => setIndex((value) => (value + 1) % events.length), 4500);
+    return () => window.clearInterval(timer);
+  }, [held, events.length]);
+
+  const event = events[index % events.length];
+  const [base, edge, accent] = TONES[index % TONES.length];
+  const state = registrationWindow(event);
+  const closes = timeLeft(event.registration_closes_at);
+  const start = event.starts_at ? new Date(event.starts_at) : null;
+  const left = start ? Math.max(0, start.getTime() - now) : 0;
+  const parts = [
+    [Math.floor(left / 86400000), "দিন"],
+    [Math.floor(left / 3600000) % 24, "ঘণ্টা"],
+    [Math.floor(left / 60000) % 60, "মিনিট"],
+    [Math.floor(left / 1000) % 60, "সেকেন্ড"],
+  ] as const;
+
+  return (
+    <div className="mx-auto mt-12 max-w-2xl" onMouseEnter={() => setHeld(true)} onMouseLeave={() => setHeld(false)} onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
+      <div className="[perspective:1200px]">
+        <Link
+          key={event.id}
+          href={`/events/${event.slug}`}
+          className="flip-in relative block overflow-hidden rounded-[1.25rem] p-5 text-left text-white shadow-[0_24px_48px_-24px_rgba(0,0,0,0.55)] sm:p-6"
+          style={{ background: `radial-gradient(26rem 14rem at 100% 0%, ${accent}40, transparent 70%), linear-gradient(135deg, ${base} 0%, ${edge} 100%)` }}
+        >
+          <div className="grid items-center gap-5 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold" style={{ color: accent }}>{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
+              <h2 className="serif mt-1 text-2xl leading-snug break-words sm:text-3xl">{event.title}</h2>
+              <p className="mt-1 text-sm text-white/70">{[when(event.starts_at, event.timezone), place(event)].join(" · ")}</p>
+              {state === "open" && <p className="mt-3 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold text-[var(--ink)]" style={{ background: accent }}>রেজিস্ট্রেশন চলছে{closes ? ` · ${closes}` : ""}</p>}
+              {state === "not_yet" && <p className="mt-3 text-sm font-semibold text-white/85">রেজিস্ট্রেশন শিগগির খুলবে</p>}
+            </div>
+            {left > 0 ? (
+              <div className="grid grid-cols-4 gap-1.5" aria-label="শুরু হতে বাকি">
+                {parts.map(([value, label]) => (
+                  <div key={label} className="min-w-[3.6rem] rounded-[0.7rem] bg-black/25 px-1 py-2.5 text-center ring-1 ring-white/10">
+                    <p className="text-2xl font-bold leading-none tabular-nums">{num(value).padStart(2, "০")}</p>
+                    <p className="mt-1 text-[0.68rem] text-white/65">{label}</p>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="rounded-[0.7rem] bg-black/25 px-4 py-3 text-center font-bold">এখন চলছে</p>}
+          </div>
+        </Link>
+      </div>
+      {events.length > 1 && (
+        <div className="mt-4 flex justify-center gap-1.5" role="tablist" aria-label="ইভেন্ট">
+          {events.map((item, i) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              aria-label={item.title}
+              onClick={() => setIndex(i)}
+              className={`h-1.5 rounded-full transition-all ${i === index ? "w-6" : "w-1.5 bg-[var(--ink)]/20 hover:bg-[var(--ink)]/40"}`}
+              style={i === index ? { background: TONES[i % TONES.length][0] } : undefined}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A programme as a tall poster: cover with a dark fade, date on top, title and status at the bottom. */
+function Poster({ event, index }: { event: EventCard; index: number }) {
+  const [failed, setFailed] = useState(false);
+  const start = event.starts_at ? new Date(event.starts_at) : null;
+  const state = registrationWindow(event);
+  const left = timeLeft(event.registration_closes_at);
+  // Posters without a cover get a deep tone from the palette, so the rail never looks empty.
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="card group flex flex-col overflow-hidden"
+      className="group relative flex aspect-[3/4] w-[15.5rem] shrink-0 flex-col justify-between overflow-hidden rounded-[1.25rem] p-4 text-white shadow-[0_14px_24px_-14px_rgba(0,0,0,0.55)] ring-1 ring-white/10 sm:w-[17rem]"
+      style={{ background: TONES[index % TONES.length][0] }}
     >
-      <div className="relative aspect-[16/9] w-full overflow-hidden bg-[var(--pine)]/10">
-        {event.cover_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={mediaURL(event.cover_image_url)}
-            alt=""
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-[var(--pine)]">
-            <TicketIcon className="h-12 w-12 opacity-40" />
+      {event.cover_image_url && !failed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={mediaURL(event.cover_image_url)} alt="" onError={() => setFailed(true)} className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" aria-hidden="true" />
+      <div className="relative flex items-start justify-between gap-2">
+        {start ? (
+          <div className="rounded-[0.8rem] bg-white px-3 py-1.5 text-center text-[var(--ink)]">
+            <p className="serif text-2xl leading-none">{dayNum.format(start)}</p>
+            <p className="text-[0.7rem] font-bold text-[var(--pine)]">{monthShort.format(start)}</p>
           </div>
-        )}
-
-        {/* Date Stub Badge */}
-        {dateParts && (
-          <div className="absolute left-3 top-3 flex flex-col items-center rounded-lg border border-black/10 bg-white/95 px-2.5 py-1 shadow-sm backdrop-blur-sm">
-            <span className="serif text-lg font-bold leading-none text-[var(--ink)]">
-              {dateParts.day}
-            </span>
-            <span className="text-[10px] font-medium text-[var(--pine)]">
-              {dateParts.month}
-            </span>
-          </div>
-        )}
-
-        {/* Category Pill */}
-        <div className="absolute right-3 top-3">
-          <span className="rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-            {categoryLabel(event.category)}
-          </span>
-        </div>
+        ) : <span />}
+        <span className="rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold backdrop-blur">{categoryLabel(event.category)}</span>
       </div>
-
-      <div className="flex flex-1 flex-col justify-between p-5">
-        <div>
-          <WindowBadge event={event} />
-          <h3 className="mt-2 text-lg font-bold leading-snug break-words group-hover:text-[var(--pine)]">
-            {event.title}
-          </h3>
-          {event.summary && (
-            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]">
-              {event.summary}
-            </p>
-          )}
-        </div>
-
-        <div className="mt-4 border-t border-[var(--line)] pt-3 text-xs text-[var(--muted)]">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <MapPinIcon className="h-3.5 w-3.5 shrink-0 text-[var(--pine)]" />
-              <span className="truncate">{place(event)}</span>
-            </div>
-            <div className="flex shrink-0 items-center gap-1 font-semibold text-[var(--ink)]">
-              <UsersIcon className="h-3.5 w-3.5 text-[var(--pine)]" />
-              <span>{(event.registration_count || 0).toLocaleString("bn-BD")} জন</span>
-            </div>
-          </div>
-        </div>
+      <div className="relative">
+        {state === "open" && <p className="mb-2 inline-flex rounded-full bg-[var(--gold)] px-2.5 py-0.5 text-xs font-bold text-[var(--ink)]">রেজিস্ট্রেশন চলছে{left ? ` · ${left}` : ""}</p>}
+        <h3 className="serif text-xl leading-snug break-words">{event.title}</h3>
+        <p className="mt-1 line-clamp-1 text-sm text-white/70">{event.organization_name || place(event)}</p>
       </div>
     </Link>
   );
