@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EventGate } from "@/components/event-gate";
+import { CalendarIcon, GiftIcon, LayersIcon, MapPinIcon, TicketIcon, UsersIcon, UtensilsIcon } from "@/components/icons";
 import { mediaURL } from "@/lib/api";
-import { categoryLabel, money, place, statusLabel, when } from "@/lib/format";
+import { categoryLabel, itemKindLabel, money, num, place, when } from "@/lib/format";
 import type { PublicEvent } from "@/lib/types";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -46,84 +47,170 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const event = await loadEvent(slug);
   if (!event) notFound();
-  const open = event.status === "registration_open";
+  const hero = event.background_image_url || event.cover_image_url;
+  const gifts = event.gifts || [];
+  const meals = event.food_enabled ? event.meals || [] : [];
 
   return (
-    <main>
-      {event.background_image_url && (
-        <div className="h-56 w-full bg-cover bg-center" style={{ backgroundImage: `url(${mediaURL(event.background_image_url)})` }} />
-      )}
-      <div className="mx-auto max-w-6xl px-4 py-8">
-      <section className="grid gap-8 md:grid-cols-[1.4fr_0.8fr]">
-        <div>
-          <p className="text-sm font-semibold text-[var(--pine)]">
-            {[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}
-          </p>
-          <h1 className="serif mt-2 text-4xl leading-[1.05] break-words sm:text-5xl md:text-6xl md:leading-[0.95]">{event.title}</h1>
-          <p className="mt-4 text-lg text-[var(--muted)]">{event.summary}</p>
-          {event.cover_image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={mediaURL(event.cover_image_url)} alt="" className="mt-6 aspect-[16/8] w-full rounded-[0.7rem] object-cover" />
-          )}
-          <article className="mt-8 max-w-none whitespace-pre-wrap break-words text-[1.05rem] leading-relaxed">{event.description}</article>
-          {event.gallery && event.gallery.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
-              {event.gallery.map((url) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={url} src={mediaURL(url)} alt="" className="aspect-[4/3] w-full rounded-[0.7rem] object-cover" />
-              ))}
-            </div>
-          )}
+    <main className="pb-16">
+      <section className="relative overflow-hidden border-b border-[var(--line)] bg-[var(--pine-deep)] text-white">
+        {hero && (
+          <div className="absolute inset-0 bg-cover bg-center opacity-35" style={{ backgroundImage: `url(${mediaURL(hero)})` }} aria-hidden="true" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--pine-deep)] via-[var(--pine-deep)]/80 to-transparent" aria-hidden="true" />
+        <div className="relative mx-auto max-w-6xl px-4 pt-14 pb-10 sm:pt-20">
+          <p className="text-sm font-semibold text-[var(--gold)]">{[categoryLabel(event.category), event.organization_name].filter(Boolean).join(" · ")}</p>
+          <h1 className="serif mt-2 max-w-3xl text-4xl break-words sm:text-5xl">{event.title}</h1>
+          {event.summary && <p className="mt-3 max-w-2xl text-lg text-white/85">{event.summary}</p>}
+          <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/90">
+            <span className="inline-flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-[var(--gold)]" />{when(event.starts_at, event.timezone)}</span>
+            <span className="inline-flex items-center gap-2"><MapPinIcon className="h-4 w-4 text-[var(--gold)]" />{place(event)}</span>
+            <span className="inline-flex items-center gap-2"><TicketIcon className="h-4 w-4 text-[var(--gold)]" />{feeSummary(event)}</span>
+          </div>
         </div>
-        <aside className="card h-fit p-5 md:sticky md:top-24">
-          <p className="text-sm font-semibold text-[var(--pine)]">{statusLabel(event.status)}</p>
-          <dl className="mt-4 space-y-3 text-sm">
-            <div><dt className="text-[var(--muted)]">সময়</dt><dd className="font-medium">{when(event.starts_at, event.timezone)}</dd></div>
-            <div><dt className="text-[var(--muted)]">লোকেশন</dt><dd className="font-medium">{place(event)}</dd>{event.address && <dd>{event.address}</dd>}</div>
-            <div><dt className="text-[var(--muted)]">ফি</dt><dd className="font-medium">{feeSummary(event)}</dd></div>
-            <div><dt className="text-[var(--muted)]">রেজিস্টার্ড</dt><dd className="font-medium">{event.registration_count.toLocaleString("bn-BD")}{event.capacity ? ` / ${event.capacity.toLocaleString("bn-BD")}` : ""}</dd></div>
-          </dl>
-          <EventGate slug={event.slug} open={open} />
-          {(event.contact_email || event.contact_phone) && (
-            <div className="mt-4 border-t border-[var(--line)] pt-4 text-sm">
-              <p className="font-semibold">অর্গানাইজারের যোগাযোগ</p>
-              {event.contact_email && <p className="mt-1"><a className="underline" href={`mailto:${event.contact_email}`}>{event.contact_email}</a></p>}
-              {event.contact_phone && <p className="mt-1"><a className="underline" href={`tel:${event.contact_phone}`}>{event.contact_phone}</a></p>}
-            </div>
-          )}
-        </aside>
       </section>
 
-      {event.segments?.length > 0 && (
-        <section className="mt-12">
-          <h2 className="serif text-3xl">সেগমেন্ট</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {event.segments.map((segment) => (
-              <article key={segment.id} className="card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-semibold">{segment.name}</h3>
-                  <p className="shrink-0 text-sm font-semibold">{money(segment.fee_amount, event.currency)}</p>
-                </div>
-                <p className="mt-1 text-sm text-[var(--muted)]">{segment.description}</p>
-                <p className="mt-2 text-sm">{[when(segment.starts_at), segment.location, segment.eligibility].filter((part) => part && part !== "তারিখ পরে জানানো হবে").join(" · ")}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+      <div className="mx-auto mt-8 grid max-w-6xl gap-8 px-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0 space-y-10">
+          {event.cover_image_url && event.background_image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={mediaURL(event.cover_image_url)} alt="" className="aspect-[16/8] w-full rounded-[var(--radius)] object-cover" />
+          )}
+          {event.description && (
+            <section>
+              <h2 className="serif text-2xl">ইভেন্ট সম্পর্কে</h2>
+              <div className="prose-text mt-3 text-[1.05rem]">{event.description}</div>
+            </section>
+          )}
 
-      {event.rules && <section className="mt-12"><h2 className="serif text-3xl">রুলস</h2><p className="mt-3 whitespace-pre-wrap">{event.rules}</p></section>}
-      {event.faq?.length > 0 && (
-        <section className="mt-12">
-          <h2 className="serif text-3xl">এফএকিউ</h2>
-          <div className="mt-4 space-y-4">
-            {event.faq.map((item) => (
-              <div key={item.question}><h3 className="font-semibold">{item.question}</h3><p className="text-[var(--muted)]">{item.answer}</p></div>
-            ))}
+          {event.segments?.length > 0 && (
+            <section>
+              <SectionTitle icon={<LayersIcon className="h-5 w-5" />} title="সেগমেন্ট" note={event.allow_segment_registration ? "রেজিস্ট্রেশনের সময় যেগুলোতে অংশ নেবেন সেগুলো বেছে নিন" : undefined} />
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {event.segments.map((segment) => (
+                  <article key={segment.id} className="card p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-bold break-words">{segment.name}</h3>
+                      <span className="badge badge-plain badge-green shrink-0">{money(segment.fee_amount, event.currency)}</span>
+                    </div>
+                    {segment.description && <p className="mt-1 text-sm muted">{segment.description}</p>}
+                    <div className="mt-3 space-y-1 text-sm">
+                      {segment.starts_at && <p className="flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-[var(--pine)]" />{when(segment.starts_at, event.timezone)}</p>}
+                      {segment.location && <p className="flex items-center gap-2"><MapPinIcon className="h-4 w-4 text-[var(--pine)]" />{segment.location}</p>}
+                      {segment.capacity ? <p className="flex items-center gap-2"><UsersIcon className="h-4 w-4 text-[var(--pine)]" />{num(segment.registration_count || 0)} / {num(segment.capacity)} সিট</p> : null}
+                      {segment.eligibility && <p className="muted">যোগ্যতা: {segment.eligibility}</p>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(gifts.length > 0 || meals.length > 0) && (
+            <section>
+              <SectionTitle icon={<GiftIcon className="h-5 w-5" />} title="রেজিস্ট্রেশনে যা পাবেন" note="ইভেন্টের দিন টিকিটের কিউআর দেখিয়ে কাউন্টার থেকে নেবেন। নেওয়া হলে আপনার টিকিটে দেখাবে।" />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {gifts.map((gift) => (
+                  <div key={gift.id} className="card flex gap-3 p-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--gold-soft)] text-[#7a5206]"><GiftIcon className="h-5 w-5" /></div>
+                    <div className="min-w-0">
+                      <p className="font-bold break-words">{gift.name}</p>
+                      <p className="text-xs font-semibold muted">{itemKindLabel(gift.kind)}</p>
+                      {gift.description && <p className="mt-1 text-sm muted">{gift.description}</p>}
+                    </div>
+                  </div>
+                ))}
+                {meals.length > 0 && (
+                  <div className="card flex gap-3 p-4">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--pine-soft)] text-[var(--pine)]"><UtensilsIcon className="h-5 w-5" /></div>
+                    <div className="min-w-0">
+                      <p className="font-bold">খাবার</p>
+                      <p className="text-sm muted">রেজিস্ট্রেশনের সময় একটি বেছে নেবেন: {meals.map((meal) => meal.name).join(", ")}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {event.gallery && event.gallery.length > 0 && (
+            <section>
+              <h2 className="serif text-2xl">ছবি</h2>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {event.gallery.map((url) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={url} src={mediaURL(url)} alt="" className="aspect-[4/3] w-full rounded-[var(--radius-sm)] object-cover" />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {event.rules && (
+            <section>
+              <h2 className="serif text-2xl">নিয়ম</h2>
+              <div className="prose-text card mt-3 p-5">{event.rules}</div>
+            </section>
+          )}
+
+          {event.faq?.length > 0 && (
+            <section>
+              <h2 className="serif text-2xl">সাধারণ প্রশ্ন</h2>
+              <div className="mt-3 space-y-2">
+                {event.faq.map((item) => (
+                  <details key={item.question} className="card group p-4">
+                    <summary className="cursor-pointer list-none font-semibold">
+                      <span className="mr-2 inline-block text-[var(--pine)] transition group-open:rotate-90">›</span>{item.question}
+                    </summary>
+                    <p className="mt-2 pl-5 muted">{item.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <aside className="order-first lg:order-none lg:sticky lg:top-24 lg:h-fit">
+          <div className="card p-5">
+            <EventGate event={event} />
+            <dl className="mt-5 space-y-3 border-t border-[var(--line)] pt-4 text-sm">
+              <Fact label="শুরু">{when(event.starts_at, event.timezone)}</Fact>
+              {event.ends_at && <Fact label="শেষ">{when(event.ends_at, event.timezone)}</Fact>}
+              <Fact label="লোকেশন">
+                {place(event)}
+                {event.address && event.address !== event.venue && <span className="block muted">{event.address}</span>}
+                {event.map_url && <a className="text-[var(--pine)] underline" href={event.map_url} target="_blank" rel="noreferrer">ম্যাপে দেখুন</a>}
+              </Fact>
+              <Fact label="ফি">{feeSummary(event)}</Fact>
+              <Fact label="রেজিস্টার্ড">{num(event.registration_count)}{event.capacity ? ` / ${num(event.capacity)} সিট` : " জন"}</Fact>
+            </dl>
+            {(event.contact_email || event.contact_phone) && (
+              <div className="mt-4 border-t border-[var(--line)] pt-4 text-sm">
+                <p className="font-semibold">অর্গানাইজারের যোগাযোগ</p>
+                {event.contact_email && <a className="mt-1 block break-all text-[var(--pine)] underline" href={`mailto:${event.contact_email}`}>{event.contact_email}</a>}
+                {event.contact_phone && <a className="mt-1 block text-[var(--pine)] underline" href={`tel:${event.contact_phone}`}>{event.contact_phone}</a>}
+              </div>
+            )}
           </div>
-        </section>
-      )}
+        </aside>
       </div>
     </main>
+  );
+}
+
+function SectionTitle({ icon, title, note }: { icon: React.ReactNode; title: string; note?: string }) {
+  return (
+    <div>
+      <h2 className="serif flex items-center gap-2 text-2xl"><span className="text-[var(--pine)]">{icon}</span>{title}</h2>
+      {note && <p className="mt-1 text-sm muted">{note}</p>}
+    </div>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2">
+      <dt className="muted">{label}</dt>
+      <dd className="font-medium break-words">{children}</dd>
+    </div>
   );
 }

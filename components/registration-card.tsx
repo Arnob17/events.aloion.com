@@ -3,67 +3,123 @@
 import Link from "next/link";
 import { TicketQR } from "@/components/ticket-qr";
 import { payMethodLabel } from "@/components/pay-method";
-import { money, personName, place, statusLabel, when } from "@/lib/format";
-import type { Registration } from "@/lib/types";
+import { StatusBadge } from "@/components/ui";
+import { money, personName, place, timeOnly, when, whenDay } from "@/lib/format";
+import type { Gift, Registration } from "@/lib/types";
 
-export function RegistrationCard({ registration, compact = false, showTicketLink = true }: { registration: Registration; compact?: boolean; showTicketLink?: boolean }) {
+const STATUS_NOTE: Record<string, string> = {
+  pending: "অর্গানাইজার পেমেন্ট মিলিয়ে কনফার্ম করবেন। কনফার্ম হলে ইমেইল পাবেন।",
+  waitlisted: "সিট খালি হলে অর্গানাইজার আপনাকে কনফার্ম করবেন।",
+  cancelled: "এই রেজিস্ট্রেশন ক্যান্সেল হয়েছে।",
+  rejected: "অর্গানাইজার এই রেজিস্ট্রেশন রিজেক্ট করেছেন।",
+  confirmed: "ইভেন্টের দিন গেটে এই কিউআর দেখান।",
+  checked_in: "আপনি হাজির হয়েছেন।",
+};
+
+/** A registration as its owner sees it: ticket, choices, and what has been collected. */
+export function RegistrationCard({ registration, compact = false, showTicketLink = true, gifts = [] }: { registration: Registration; compact?: boolean; showTicketLink?: boolean; gifts?: Gift[] }) {
+  const items = registration.items || [];
+  const received = new Set(items.map((item) => item.item_id));
+  const waiting = gifts.filter((gift) => !received.has(gift.id));
+  const live = registration.status === "confirmed" || registration.status === "checked_in";
+
+  if (compact) {
+    return (
+      <Link href={`/tickets/${registration.public_code}`} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-bold break-words">{registration.event_title || "ইভেন্ট"}</p>
+          <p className="text-sm muted">{whenDay(registration.event_starts_at)} · {place({ venue: registration.venue, address: registration.address })}</p>
+          <p className="mt-1 font-mono text-sm">{registration.public_code}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <StatusBadge status={registration.status} />
+          <span className="text-sm font-semibold text-[var(--pine)]">টিকিট →</span>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <article className="card overflow-hidden">
-      <div className="bg-[var(--ink)] px-5 py-5 text-[var(--paper)]">
-        <p className="text-sm text-[var(--gold)]">আপনার রেজিস্ট্রেশন</p>
+      <div className="relative bg-[var(--pine-deep)] px-5 py-5 text-white">
+        <p className="text-sm font-semibold text-[var(--gold)]">আপনার টিকিট</p>
         <h2 className="serif mt-1 break-words text-2xl sm:text-3xl">{registration.event_title || "ইভেন্ট"}</h2>
-        <p className="mt-2 text-sm text-white/75">{when(registration.event_starts_at)}{registration.event_ends_at ? ` – ${when(registration.event_ends_at)}` : ""}</p>
-        <p className="text-sm text-white/75">{place({ venue: registration.venue, address: registration.address })}</p>
+        <p className="mt-2 text-sm text-white/80">{when(registration.event_starts_at)}{registration.event_ends_at ? ` – ${when(registration.event_ends_at)}` : ""}</p>
+        <p className="text-sm text-white/80">{place({ venue: registration.venue, address: registration.address })}</p>
       </div>
-      <div className="space-y-3 p-5">
+      <div className="space-y-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold break-words">{personName(registration.participant)}</p>
-            <p className="text-sm break-all text-[var(--muted)]">{registration.participant.email}</p>
+            <p className="font-mono text-sm muted">{registration.public_code}</p>
           </div>
-          <span className="shrink-0 rounded-md bg-[var(--paper)] px-3 py-1 text-sm font-medium">{statusLabel(registration.status)}</span>
+          <StatusBadge status={registration.status} />
         </div>
-        <p className="font-mono text-lg break-all">{registration.public_code}</p>
-        <p className="flex justify-between gap-3 text-sm font-semibold">
-          <span>মোট</span>
-          <span>{money(registration.amount_due || 0, registration.currency)}{registration.amount_due > 0 ? ` · ${statusLabel(registration.payment_status)}` : ""}</span>
-        </p>
-        {registration.transaction_id && (
-          <p className="text-sm">
-            {payMethodLabel(registration.payment_method) ? `${payMethodLabel(registration.payment_method)} · ` : ""}
-            ট্রানজাকশন আইডি <span className="font-mono">{registration.transaction_id}</span>
-          </p>
-        )}
-        {registration.segments.length > 0 && (
-          <ul className="space-y-2 text-sm">
-            {registration.segments.map((segment) => (
-              <li key={segment.id} className="rounded-xl bg-[var(--paper)] px-3 py-2">
-                <span className="flex items-start justify-between gap-3">
-                  <strong className="break-words">{segment.name}</strong>
-                  <span className="shrink-0">{money(segment.fee_amount, registration.currency)}</span>
-                </span>
-                <span className="mt-0.5 block text-[var(--muted)]">{[when(segment.starts_at), segment.location].filter(Boolean).join(" · ")}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {registration.meal && <p className="text-sm">খাবার: {registration.meal.name}</p>}
-        {registration.answers.length > 0 && (
-          <dl className="grid gap-1 text-sm">
-            {registration.answers.filter((answer) => answer.value).map((answer) => (
-              <div key={answer.field_id} className="grid gap-0.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-3">
-                <dt className="text-[var(--muted)]">{answer.label}</dt>
-                <dd className="font-medium break-words sm:text-right">{answer.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-        {!compact && registration.qr_token && registration.status !== "cancelled" && <TicketQR token={registration.qr_token} />}
-        <div className="flex flex-wrap gap-2 pt-1">
+        {STATUS_NOTE[registration.status] && <p className={`notice ${live ? "notice-success" : registration.status === "pending" || registration.status === "waitlisted" ? "notice-warn" : "notice-error"}`}>{STATUS_NOTE[registration.status]}</p>}
+
+        {live && registration.qr_token && <TicketQR token={registration.qr_token} />}
+
+        <dl className="divide-y divide-[var(--line)] rounded-[var(--radius)] border border-[var(--line)] text-sm">
+          <Row label="মোট ফি">
+            {money(registration.amount_due || 0, registration.currency)}
+            {registration.amount_due > 0 && <> · <StatusBadge status={registration.payment_status} /></>}
+          </Row>
+          {registration.transaction_id && (
+            <Row label="পেমেন্ট">{payMethodLabel(registration.payment_method)} · <span className="font-mono">{registration.transaction_id}</span></Row>
+          )}
+          {registration.segments.length > 0 && (
+            <Row label="সেগমেন্ট">
+              <ul className="space-y-1">
+                {registration.segments.map((segment) => (
+                  <li key={segment.id}>
+                    <span className="font-semibold">{segment.name}</span>
+                    {(segment.starts_at || segment.location) && <span className="block text-xs muted">{[segment.starts_at ? when(segment.starts_at) : "", segment.location].filter(Boolean).join(" · ")}</span>}
+                  </li>
+                ))}
+              </ul>
+            </Row>
+          )}
+          {registration.meal && (
+            <Row label="খাবার">
+              <span className="font-semibold">{registration.meal.name}</span>
+              <span className="mt-0.5 block text-xs">
+                {registration.meal_served_at
+                  ? <span className="text-[var(--pine)]">✓ নেওয়া হয়েছে · {timeOnly(registration.meal_served_at)}</span>
+                  : <span className="muted">কাউন্টারে এই টিকিট দেখিয়ে নিন</span>}
+              </span>
+            </Row>
+          )}
+          {(items.length > 0 || waiting.length > 0) && (
+            <Row label="গিফট">
+              <ul className="space-y-1">
+                {items.map((item) => (
+                  <li key={item.item_id} className="text-[var(--pine)]">✓ {item.name} <span className="text-xs muted">· {whenDay(item.given_at)}</span></li>
+                ))}
+                {waiting.map((gift) => (
+                  <li key={gift.id} className="muted">○ {gift.name} <span className="text-xs">· এখনো নেওয়া হয়নি</span></li>
+                ))}
+              </ul>
+            </Row>
+          )}
+          {registration.answers.filter((answer) => answer.value).map((answer) => (
+            <Row key={answer.field_id} label={answer.label}>{answer.value}</Row>
+          ))}
+        </dl>
+
+        <div className="flex flex-wrap gap-2">
           {registration.event_slug && <Link className="btn btn-ghost" href={`/events/${registration.event_slug}`}>ইভেন্টের পাতা</Link>}
-          {showTicketLink && <Link className="btn btn-primary" href={`/tickets/${registration.public_code}`}>টিকিট খুলুন</Link>}
+          {showTicketLink && <Link className="btn btn-primary" href={`/tickets/${registration.public_code}`}>পুরো টিকিট</Link>}
         </div>
       </div>
     </article>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-1 px-4 py-2.5 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-3">
+      <dt className="muted">{label}</dt>
+      <dd className="min-w-0 break-words">{children}</dd>
+    </div>
   );
 }

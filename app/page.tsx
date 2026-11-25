@@ -12,7 +12,7 @@ import {
   UsersIcon,
 } from "@/components/icons";
 import { api, mediaURL } from "@/lib/api";
-import { CATEGORIES, categoryLabel, place, statusLabel, whenDay } from "@/lib/format";
+import { CATEGORIES, categoryLabel, place, registrationWindow, statusLabel, timeLeft, whenDay } from "@/lib/format";
 import type { EventCard } from "@/lib/types";
 
 function parseDateParts(dateStr?: string | null) {
@@ -53,10 +53,11 @@ export default function DiscoverPage() {
   const isFiltered = Boolean(q || category || location || registration);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-20">
+    <main className="mx-auto max-w-6xl px-4 pb-20">
       {/* Hero section */}
-      <header className="border-b border-[var(--line)] py-10 sm:py-14">
-        <h1 className="serif text-4xl leading-[1.1] sm:text-5xl md:text-6xl">
+      <header className="py-10 sm:py-14">
+        <p className="text-sm font-semibold text-[var(--pine)]">আলোআয়ন ইভেন্ট</p>
+        <h1 className="serif mt-1 text-4xl leading-[1.15] sm:text-5xl">
           স্কুল, কলেজ ও কমিউনিটির ইভেন্ট
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--muted)] sm:text-lg">
@@ -94,7 +95,7 @@ export default function DiscoverPage() {
 
         {/* Filters */}
         <form
-          className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-4 shadow-sm"
+          className="card mt-6 p-4 shadow-[var(--shadow)]"
           onSubmit={(event) => event.preventDefault()}
         >
           <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -196,9 +197,7 @@ export default function DiscoverPage() {
                   <span className="rounded bg-[var(--paper)] px-2.5 py-0.5 text-xs font-semibold text-[var(--pine)]">
                     {categoryLabel(featured.category)}
                   </span>
-                  <span className="rounded bg-[var(--pine)]/10 px-2.5 py-0.5 text-xs font-medium text-[var(--pine)]">
-                    {statusLabel(featured.status)}
-                  </span>
+                  <WindowBadge event={featured} />
                 </div>
                 <h2 className="serif mt-3 text-2xl font-bold leading-tight break-words sm:text-3xl">
                   {featured.title}
@@ -239,10 +238,10 @@ export default function DiscoverPage() {
               {featured ? "অন্যান্য ইভেন্ট" : "সকল ইভেন্ট"}
             </h2>
             <span className="text-xs text-[var(--muted)]">
-              {rest.length.toLocaleString("bn-BD")}টি ইভেন্ট পাওয়া গেছে
+              {events.length.toLocaleString("bn-BD")}টি ইভেন্ট
             </span>
           </div>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((event) => (
               <EventTile key={event.id} event={event} />
             ))}
@@ -278,13 +277,24 @@ export default function DiscoverPage() {
   );
 }
 
+function WindowBadge({ event }: { event: EventCard }) {
+  const state = registrationWindow(event);
+  if (state === "open") {
+    const left = timeLeft(event.registration_closes_at);
+    return <span className="badge badge-green">রেজিস্ট্রেশন চলছে{left ? ` · ${left}` : ""}</span>;
+  }
+  if (state === "not_yet") return <span className="badge badge-blue">শিগগির রেজিস্ট্রেশন</span>;
+  if (state === "ended") return <span className="badge badge-amber">রেজিস্ট্রেশন শেষ</span>;
+  return <span className="badge badge-gray">{statusLabel(event.status)}</span>;
+}
+
 function EventTile({ event }: { event: EventCard }) {
   const dateParts = parseDateParts(event.starts_at);
 
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="card group flex flex-col overflow-hidden transition hover:-translate-y-0.5 hover:shadow-md"
+      className="card group flex flex-col overflow-hidden"
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-[var(--pine)]/10">
         {event.cover_image_url ? (
@@ -322,14 +332,12 @@ function EventTile({ event }: { event: EventCard }) {
 
       <div className="flex flex-1 flex-col justify-between p-5">
         <div>
-          <span className="text-xs font-medium text-[var(--pine)]">
-            {statusLabel(event.status)}
-          </span>
-          <h3 className="serif mt-1 text-xl font-bold leading-snug break-words group-hover:text-[var(--pine)]">
+          <WindowBadge event={event} />
+          <h3 className="mt-2 text-lg font-bold leading-snug break-words group-hover:text-[var(--pine)]">
             {event.title}
           </h3>
           {event.summary && (
-            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">
+            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[var(--muted)]">
               {event.summary}
             </p>
           )}

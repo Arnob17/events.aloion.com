@@ -1,57 +1,32 @@
 "use client";
 
-import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
-import { useEffect, useRef, useState } from "react";
-import { FieldLabel } from "@/components/field-label";
+import { useState } from "react";
+import { QrScanner } from "@/components/qr-scanner";
 import { api } from "@/lib/api";
+import { timeOnly } from "@/lib/format";
 import type { ScanResult } from "@/lib/types";
+
+const RESULT: Record<string, { label: string; tone: string }> = {
+  valid: { label: "টিকিট ঠিক আছে", tone: "border-[var(--pine)] bg-[var(--pine-soft)]" },
+  checked_in: { label: "চেক-ইন হয়েছে ✓", tone: "border-[var(--pine)] bg-[var(--pine-soft)]" },
+  already_checked_in: { label: "আগেই হাজির হয়েছেন", tone: "border-[var(--warn)] bg-[var(--warn-soft)]" },
+  cancelled: { label: "রেজিস্ট্রেশন ক্যান্সেল", tone: "border-[var(--danger)] bg-[var(--danger-soft)]" },
+  rejected: { label: "রেজিস্ট্রেশন রিজেক্টেড", tone: "border-[var(--danger)] bg-[var(--danger-soft)]" },
+  pending: { label: "পেমেন্ট এখনো কনফার্ম হয়নি", tone: "border-[var(--warn)] bg-[var(--warn-soft)]" },
+  waitlisted: { label: "ওয়েটলিস্টে আছেন", tone: "border-[var(--warn)] bg-[var(--warn-soft)]" },
+  invalid: { label: "রেজিস্ট্রেশন পাওয়া যায়নি", tone: "border-[var(--danger)] bg-[var(--danger-soft)]" },
+};
 
 export function CheckIn({ eventId }: { eventId: number }) {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
-  const scanner = useRef<Html5Qrcode | null>(null);
-  const paused = useRef(false);
-
-  useEffect(() => {
-    let node: Html5Qrcode | null = null;
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      node = new Html5Qrcode("qr-reader", false);
-      scanner.current = node;
-      node.start(
-        { facingMode: "environment" },
-        { fps: 8, qrbox: { width: 240, height: 240 } },
-        async (decoded) => {
-          if (paused.current || cancelled) return;
-          paused.current = true;
-          try {
-            setResult(await api.validate(eventId, { token: decoded, device_label: navigator.userAgent }));
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "স্ক্যান হয়নি");
-          }
-        },
-        () => undefined,
-      ).then(() => {
-        if (cancelled && node) return stopScanner(node);
-      }).catch(() => {
-        if (!cancelled) setError("ক্যামেরার পারমিশন লাগবে। রেজিস্ট্রেশন নম্বর দিয়েও সার্চ করা যায়।");
-      });
-    }, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-      if (node) stopScanner(node);
-      scanner.current = null;
-    };
-  }, [eventId]);
 
   async function lookup(body: object) {
     setError("");
     try {
       setResult(await api.validate(eventId, body));
-      paused.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "সার্চ হয়নি");
     }
@@ -69,85 +44,71 @@ export function CheckIn({ eventId }: { eventId: number }) {
     }
   }
 
+  function nextPerson() {
+    setResult(null);
+    setCode("");
+    setError("");
+  }
+
   const canAttend = result?.result === "valid" || result?.result === "checked_in" || result?.result === "already_checked_in";
-  const tone = result?.result === "valid" || result?.result === "checked_in"
-    ? "bg-emerald-50"
-    : result?.result === "already_checked_in"
-      ? "bg-amber-50"
-      : result ? "bg-red-50" : "bg-white";
+  const look = RESULT[result?.result || "invalid"] || RESULT.invalid;
 
   return (
-    <div className="mx-auto max-w-md">
-      <div id="qr-reader" className="overflow-hidden rounded-[1.1rem] bg-black" />
-      <form className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); lookup({ code }); }}>
-        <FieldLabel label="রেজিস্ট্রেশন নম্বর" className="sm:min-w-0 sm:flex-1">
-          <input className="field" value={code} onChange={(event) => setCode(event.target.value)} />
-        </FieldLabel>
-        <button className="btn btn-primary shrink-0">সার্চ</button>
-      </form>
-      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-      {result && (
-        <section className={`mt-4 rounded-[1.1rem] p-5 ${tone}`}>
-          <p className="text-sm font-medium text-[var(--pine)]">{labelFor(result.result)}</p>
-          <h2 className="serif mt-1 text-3xl">{result.participant_name || "অজানা"}</h2>
-          <p className="font-mono">{result.registration_code}</p>
-          {result.checked_in_at && <p className="mt-2 text-sm">হাজির হয়েছেন {new Date(result.checked_in_at).toLocaleTimeString("bn-BD")}</p>}
-          {result.segments && result.segments.length > 0 && (
-            <ul className="mt-4 grid gap-2">
-              {result.segments.map((segment) => (
-                <li key={segment.id} className="flex flex-col gap-3 rounded-[0.7rem] bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-medium">{segment.name}</p>
-                    <p className="text-sm text-[var(--muted)]">
-                      {segment.done ? `হয়ে গেছে${segment.checked_in_at ? ` · ${new Date(segment.checked_in_at).toLocaleTimeString("bn-BD")}` : ""}` : "এখনো হয়নি"}
-                      {segment.location ? ` · ${segment.location}` : ""}
-                    </p>
-                  </div>
-                  {canAttend && result.registration_code && (
-                    segment.done ? (
-                      <button className="btn btn-ghost !py-2" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.undo(eventId, result.registration_code!, segment.id))}>আনডু</button>
-                    ) : (
-                      <button className="btn btn-primary !py-2" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.checkIn(eventId, { code: result.registration_code, segment_id: segment.id }))}>হয়ে গেছে</button>
-                    )
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {result.result === "valid" && result.registration_code && (
-              <button className="btn btn-primary" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.checkIn(eventId, { code: result.registration_code }))}>হাজির</button>
-            )}
-            {result.result === "already_checked_in" && result.registration_code && (
-              <button className="btn btn-ghost" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.undo(eventId, result.registration_code!))}>চেক-ইন আনডু</button>
-            )}
-            <button className="btn btn-ghost" onClick={() => { setResult(null); paused.current = false; }}>পরের জন</button>
+    <div className="mx-auto grid max-w-4xl gap-5 lg:grid-cols-2">
+      <div>
+        <QrScanner paused={Boolean(result)} onScan={(token) => lookup({ token, device_label: navigator.userAgent })} />
+        <form className="mt-3 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (code.trim()) lookup({ code: code.trim() }); }}>
+          <input className="field font-mono" placeholder="রেজিস্ট্রেশন নম্বর লিখুন" value={code} onChange={(event) => setCode(event.target.value)} aria-label="রেজিস্ট্রেশন নম্বর" />
+          <button className="btn btn-primary shrink-0">খুঁজুন</button>
+        </form>
+        {error && <p className="notice notice-error mt-3">{error}</p>}
+      </div>
+
+      <div>
+        {!result ? (
+          <div className="card grid h-full min-h-[14rem] place-items-center p-6 text-center">
+            <div>
+              <p className="text-lg font-bold">টিকিটের কিউআর ক্যামেরার সামনে ধরুন</p>
+              <p className="mt-1 text-sm muted">স্ক্যান হলে এখানে নাম আর স্ট্যাটাস দেখাবে। তারপর “হাজির” চাপুন।</p>
+            </div>
           </div>
-        </section>
-      )}
+        ) : (
+          <section className={`rounded-[var(--radius)] border-2 bg-white p-5 ${look.tone}`} aria-live="polite">
+            <p className="text-sm font-bold">{look.label}</p>
+            <h2 className="serif mt-1 text-3xl break-words">{result.participant_name || "অজানা"}</h2>
+            <p className="font-mono">{result.registration_code}</p>
+            {result.checked_in_at && <p className="mt-1 text-sm">হাজির হয়েছেন {timeOnly(result.checked_in_at)}</p>}
+
+            {result.segments && result.segments.length > 0 && (
+              <ul className="mt-4 grid gap-2">
+                {result.segments.map((segment) => (
+                  <li key={segment.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] bg-white px-3 py-2.5 shadow-sm">
+                    <div className="min-w-0">
+                      <p className="font-semibold break-words">{segment.name}</p>
+                      <p className="text-xs muted">{segment.done ? `✓ হয়ে গেছে${segment.checked_in_at ? ` · ${timeOnly(segment.checked_in_at)}` : ""}` : "এখনো হয়নি"}{segment.location ? ` · ${segment.location}` : ""}</p>
+                    </div>
+                    {canAttend && result.registration_code && (segment.done ? (
+                      <button className="btn btn-ghost btn-sm" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.undo(eventId, result.registration_code!, segment.id))}>আনডু</button>
+                    ) : (
+                      <button className="btn btn-primary btn-sm" disabled={busy === `s${segment.id}`} onClick={() => run(`s${segment.id}`, () => api.checkIn(eventId, { code: result.registration_code, segment_id: segment.id }))}>হাজির</button>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {result.result === "valid" && result.registration_code && (
+                <button className="btn btn-primary btn-lg flex-1" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.checkIn(eventId, { code: result.registration_code }))}>হাজির</button>
+              )}
+              {result.result === "already_checked_in" && result.registration_code && (
+                <button className="btn btn-ghost" disabled={busy === "arrive"} onClick={() => run("arrive", () => api.undo(eventId, result.registration_code!))}>চেক-ইন আনডু</button>
+              )}
+              <button className="btn btn-ghost btn-lg flex-1" onClick={nextPerson}>পরের জন →</button>
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
-}
-
-function stopScanner(node: Html5Qrcode) {
-  try {
-    const state = node.getState();
-    if (state !== Html5QrcodeScannerState.SCANNING && state !== Html5QrcodeScannerState.PAUSED) return;
-    node.stop().catch(() => undefined);
-  } catch {
-    // stop() throws when the camera never started.
-  }
-}
-
-function labelFor(result: string) {
-  switch (result) {
-    case "valid": return "টিকিট ঠিক আছে";
-    case "checked_in": return "চেক-ইন হয়েছে";
-    case "already_checked_in": return "আগেই হাজির";
-    case "cancelled": return "রেজিস্ট্রেশন ক্যান্সেল";
-    case "rejected": return "রেজিস্ট্রেশন রিজেক্টেড";
-    case "pending": return "পেমেন্ট এখনো বাকি";
-    case "waitlisted": return "ওয়েটলিস্ট";
-    default: return "রেজিস্ট্রেশন পাওয়া যায়নি";
-  }
 }

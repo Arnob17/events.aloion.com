@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { AloionMark } from "@/components/aloion-mark";
 import { FieldLabel } from "@/components/field-label";
 import { api } from "@/lib/api";
-import { CATEGORIES } from "@/lib/format";
+import { CATEGORIES, fromLocalInput } from "@/lib/format";
+import { PageLoading } from "@/components/ui";
 import { useSession } from "@/lib/session";
 
 export default function NewEventPage() {
@@ -23,6 +24,7 @@ export default function NewEventPage() {
     contact_phone: "",
     starts_at: "",
     ends_at: "",
+    registration_closes_at: "",
     timezone: "Asia/Dhaka",
     location_type: "physical",
     venue: "",
@@ -44,8 +46,8 @@ export default function NewEventPage() {
     }));
   }, [user]);
 
-  if (loading) return <main className="p-10">লোড হচ্ছে…</main>;
-  if (!user) return <main className="p-10"><button className="btn btn-primary" onClick={() => login()}><AloionMark />আলোআয়ন দিয়ে চালিয়ে যান</button></main>;
+  if (loading) return <PageLoading />;
+  if (!user) return <main className="mx-auto max-w-lg px-4 py-14 text-center"><h1 className="serif text-3xl">ইভেন্ট তৈরি</h1><p className="mt-2 muted">শুরু করতে লগইন করুন।</p><button className="btn btn-primary mt-5" onClick={() => login()}><AloionMark />আলোআয়ন দিয়ে চালিয়ে যান</button></main>;
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -79,8 +81,9 @@ export default function NewEventPage() {
         contact_email: form.contact_email.trim(),
         contact_phone: form.contact_phone.trim(),
         timezone: form.timezone,
-        starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : undefined,
-        ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : undefined,
+        starts_at: fromLocalInput(form.starts_at),
+        ends_at: fromLocalInput(form.ends_at),
+        registration_closes_at: fromLocalInput(form.registration_closes_at),
         location_type: form.location_type,
         venue: form.venue,
         address: form.address,
@@ -100,24 +103,32 @@ export default function NewEventPage() {
 
   return (
     <main className="mx-auto max-w-xl px-4 py-10">
-      <h1 className="serif text-4xl sm:text-5xl">ইভেন্ট তৈরি</h1>
-      <p className="mt-2 text-sm text-[var(--muted)]">স্টেপ {step + 1} / ৩</p>
-      <div className="card mt-6 grid gap-3 p-5">
+      <h1 className="serif text-3xl sm:text-4xl">নতুন ইভেন্ট</h1>
+      <p className="mt-1 text-sm muted">তিনটি ধাপ। পরে ডেস্কের সেটিংসে সব বদলানো যাবে।</p>
+      <ol className="mt-6 flex gap-1" aria-label="ধাপ">
+        {["মূল তথ্য", "সময় ও জায়গা", "রেজিস্ট্রেশন"].map((label, index) => (
+          <li key={label} className="flex min-w-0 flex-1 flex-col gap-1.5" aria-current={index === step ? "step" : undefined}>
+            <span className={`h-1.5 rounded-full ${index <= step ? "bg-[var(--pine)]" : "bg-[var(--paper-2)]"}`} />
+            <span className={`truncate text-xs font-semibold ${index === step ? "text-[var(--pine-deep)]" : "muted"}`}>{index + 1}. {label}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="card mt-5 grid gap-4 p-5 sm:p-6">
         {step === 0 && (
           <>
-            <FieldLabel label="নাম">
+            <FieldLabel label="ইভেন্টের নাম">
               <input className="field" placeholder="বিজ্ঞান উৎসব ২০২৬" value={form.title} onChange={(event) => set("title", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="সামারি">
+            <FieldLabel label="এক লাইনে সারাংশ">
               <textarea className="field" value={form.summary} onChange={(event) => set("summary", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="ডিসক্রিপশন">
+            <FieldLabel label="বিস্তারিত বিবরণ">
               <textarea className="field min-h-28" value={form.description} onChange={(event) => set("description", event.target.value)} />
             </FieldLabel>
             <FieldLabel label="ক্যাটাগরি">
               <select className="field" value={form.category} onChange={(event) => set("category", event.target.value)}>{CATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
             </FieldLabel>
-            <FieldLabel label="অর্গানাইজেশন">
+            <FieldLabel label="আয়োজক প্রতিষ্ঠান">
               <input className="field" value={form.organization_name} onChange={(event) => set("organization_name", event.target.value)} />
             </FieldLabel>
             <FieldLabel label="যোগাযোগের ইমেইল">
@@ -136,9 +147,9 @@ export default function NewEventPage() {
             <FieldLabel label="শেষ">
               <input className="field" type="datetime-local" value={form.ends_at} onChange={(event) => set("ends_at", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="টাইপ">
+            <FieldLabel label="ধরন">
               <select className="field" value={form.location_type} onChange={(event) => set("location_type", event.target.value)}>
-                <option value="physical">ফিজিক্যাল</option>
+                <option value="physical">সরাসরি (ভেন্যুতে)</option>
                 <option value="online">অনলাইন</option>
                 <option value="hybrid">হাইব্রিড</option>
               </select>
@@ -146,7 +157,7 @@ export default function NewEventPage() {
             <FieldLabel label="ভেন্যু">
               <input className="field" value={form.venue} onChange={(event) => set("venue", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="অ্যাড্রেস">
+            <FieldLabel label="ঠিকানা">
               <input className="field" value={form.address} onChange={(event) => set("address", event.target.value)} />
             </FieldLabel>
             <FieldLabel label="অনলাইন লিংক">
@@ -156,8 +167,12 @@ export default function NewEventPage() {
         )}
         {step === 2 && (
           <>
-            <FieldLabel label="ক্যাপাসিটি">
-              <input className="field" placeholder="খালি থাকলে আনলিমিটেড" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
+            <FieldLabel label="রেজিস্ট্রেশনের শেষ তারিখ">
+              <input className="field" type="datetime-local" value={form.registration_closes_at} onChange={(event) => set("registration_closes_at", event.target.value)} />
+              <span className="field-hint">এই সময়ের পর রেজিস্ট্রেশন নিজে থেকে বন্ধ হবে। পরে বদলানো যাবে।</span>
+            </FieldLabel>
+            <FieldLabel label="মোট সিট">
+              <input className="field" inputMode="numeric" placeholder="খালি থাকলে সীমা নেই" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
             </FieldLabel>
             <FieldLabel label="মূল রেজিস্ট্রেশন ফি">
               <input className="field" inputMode="decimal" placeholder="সেগমেন্টের ফি আলাদা" value={form.fee_amount} onChange={(event) => set("fee_amount", event.target.value)} />
@@ -168,7 +183,7 @@ export default function NewEventPage() {
             <FieldLabel label="নগদ নম্বর">
               <input className="field" inputMode="tel" placeholder="০১XXXXXXXXX" value={form.nagad_number} onChange={(event) => set("nagad_number", event.target.value)} />
             </FieldLabel>
-            <FieldLabel label="ভিজিবিলিটি">
+            <FieldLabel label="কে দেখতে পাবে">
               <select className="field" value={form.visibility} onChange={(event) => set("visibility", event.target.value)}>
                 <option value="public">পাবলিক</option>
                 <option value="private">প্রাইভেট লিংক</option>
@@ -177,7 +192,7 @@ export default function NewEventPage() {
             <p className="text-sm text-[var(--muted)]">ইভেন্ট ড্রাফট হিসেবে শুরু হবে। পাবলিক হতে অ্যাডমিন অ্যাপ্রুভ লাগবে। যোগাযোগের ইমেইল ও ফোন ইভেন্টের পাতায় দেখাবে।</p>
           </>
         )}
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="notice notice-error" role="alert">{error}</p>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <button className="btn btn-ghost w-full sm:w-auto" type="button" disabled={step === 0} onClick={() => setStep((value) => value - 1)}>পেছনে</button>
           {step < 2 ? <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={() => { if (step === 0 && !contactReady()) return; setStep((value) => value + 1); }}>পরের স্টেপ</button> : <button className="btn btn-primary w-full sm:w-auto" type="button" onClick={create}>ড্রাফট তৈরি</button>}

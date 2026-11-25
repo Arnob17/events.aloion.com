@@ -19,174 +19,98 @@ import {
   UtensilsIcon,
 } from "@/components/icons";
 import { api, mediaURL } from "@/lib/api";
-import { categoryLabel, statusLabel, whenDay, place } from "@/lib/format";
+import { num, personName, place, registrationWindow, timeLeft, whenDay } from "@/lib/format";
+import { EmptyState, PageLoading, Stat, StatusBadge } from "@/components/ui";
 import { useSession } from "@/lib/session";
 import type { EventCard } from "@/lib/types";
 
 export default function OrganizerHome() {
   const { user, loading, login } = useSession();
-  const [events, setEvents] = useState<EventCard[]>([]);
-  const [fetching, setFetching] = useState(false);
+  const [events, setEvents] = useState<EventCard[] | null>(null);
+  const [filter, setFilter] = useState<"all" | "live" | "draft" | "past">("all");
 
   useEffect(() => {
     if (!user) return;
-    setFetching(true);
-    api
-      .managed()
-      .then((data) => setEvents(data.events || []))
-      .catch(() => undefined)
-      .finally(() => setFetching(false));
+    api.managed().then((data) => setEvents(data.events || [])).catch(() => setEvents([]));
   }, [user]);
 
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-5xl px-4 py-20 text-center text-[var(--muted)]">
-        ইভেন্ট লোড হচ্ছে...
-      </main>
-    );
-  }
+  if (loading) return <PageLoading />;
+  if (!user) return <OrganizerLanding onLogin={() => login(`${window.location.origin}/organizer`)} />;
 
-  if (!user) {
-    return <OrganizerLanding onLogin={() => login("https://events.aloion.com/organizer")} />;
-  }
-
-  const totalRegistrations = events.reduce((sum, e) => sum + (e.registration_count || 0), 0);
-  const activeEvents = events.filter(
-    (e) => e.status === "published" || e.status === "registration_open" || e.status === "ongoing"
-  ).length;
+  const rows = events || [];
+  const live = (e: EventCard) => ["published", "registration_open", "registration_closed", "ongoing"].includes(e.status);
+  const draft = (e: EventCard) => ["draft", "submitted", "approved", "rejected"].includes(e.status);
+  const past = (e: EventCard) => ["completed", "cancelled"].includes(e.status);
+  const shown = rows.filter((e) => filter === "all" || (filter === "live" ? live(e) : filter === "draft" ? draft(e) : past(e)));
+  const totalRegistrations = rows.reduce((sum, e) => sum + (e.registration_count || 0), 0);
+  const openNow = rows.filter((e) => registrationWindow(e) === "open").length;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      {/* Header & Quick stats */}
-      <div className="flex flex-col gap-4 border-b border-[var(--line)] pb-8 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto max-w-6xl px-4 py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="serif text-3xl sm:text-4xl">আপনার পরিচালিত ইভেন্ট</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            {user.first_name ? `${user.first_name} ${user.last_name || ""}` : user.username || user.email}
-            {user.school_name ? ` · ${user.school_name}` : ""}
-          </p>
+          <p className="text-sm font-semibold text-[var(--pine)]">অর্গানাইজার</p>
+          <h1 className="serif text-3xl sm:text-4xl">আপনার ইভেন্ট</h1>
+          <p className="mt-1 text-sm muted">{personName(user)}{user.school_name ? ` · ${user.school_name}` : ""}</p>
         </div>
-        <Link href="/organizer/events/new" className="btn btn-primary w-full sm:w-auto">
-          <PlusIcon className="h-4 w-4" />
-          নতুন ইভেন্ট তৈরি
-        </Link>
+        <Link href="/organizer/events/new" className="btn btn-primary btn-lg"><PlusIcon className="h-4 w-4" />নতুন ইভেন্ট</Link>
       </div>
 
-      {/* Metrics Strip */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="card p-4">
-          <p className="text-xs text-[var(--muted)]">মোট ইভেন্ট</p>
-          <p className="serif mt-1 text-2xl sm:text-3xl font-semibold">
-            {events.length.toLocaleString("bn-BD")}
-          </p>
-        </div>
-        <div className="card p-4">
-          <p className="text-xs text-[var(--muted)]">মোট রেজিস্টার্ড অংশগ্রহণকারী</p>
-          <p className="serif mt-1 text-2xl sm:text-3xl font-semibold text-[var(--pine)]">
-            {totalRegistrations.toLocaleString("bn-BD")}
-          </p>
-        </div>
-        <div className="card col-span-2 p-4 sm:col-span-1">
-          <p className="text-xs text-[var(--muted)]">সক্রিয় বা রেজিস্ট্রেশন চলছে</p>
-          <p className="serif mt-1 text-2xl sm:text-3xl font-semibold">
-            {activeEvents.toLocaleString("bn-BD")}
-          </p>
+        <Stat label="মোট ইভেন্ট" value={num(rows.length)} />
+        <Stat label="মোট রেজিস্ট্রেশন" value={num(totalRegistrations)} tone="green" />
+        <div className="col-span-2 sm:col-span-1"><Stat label="এখন রেজিস্ট্রেশন চলছে" value={num(openNow)} /></div>
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="segmented" role="group" aria-label="ফিল্টার">
+          {([["all", "সব"], ["live", "চলমান"], ["draft", "ড্রাফট ও রিভিউ"], ["past", "শেষ"]] as const).map(([key, label]) => (
+            <button key={key} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>
+          ))}
         </div>
       </div>
 
-      {/* Event List */}
-      <section className="mt-8">
-        <h2 className="serif text-2xl">ইভেন্টের তালিকা</h2>
-
-        {fetching && (
-          <div className="card mt-4 p-8 text-center text-sm text-[var(--muted)]">
-            তথ্য আপডেট হচ্ছে...
-          </div>
+      <div className="mt-4 space-y-3">
+        {events === null && [0, 1, 2].map((n) => <div key={n} className="skeleton h-28" />)}
+        {events !== null && rows.length === 0 && (
+          <EmptyState
+            icon={<TicketIcon className="h-6 w-6" />}
+            title="এখনো কোনো ইভেন্ট তৈরি করেননি"
+            body="আপনার স্কুল, কলেজ, বিশ্ববিদ্যালয় বা ক্লাবের প্রথম ইভেন্টটি যোগ করে রেজিস্ট্রেশন, সেগমেন্ট ও কিউআর চেক-ইন শুরু করুন।"
+            action={<Link href="/organizer/events/new" className="btn btn-primary"><PlusIcon className="h-4 w-4" />প্রথম ইভেন্ট তৈরি করুন</Link>}
+          />
         )}
-
-        {!fetching && events.length === 0 && (
-          <div className="card mt-4 p-8 text-center sm:p-12">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--pine)]/10 text-[var(--pine)]">
-              <TicketIcon className="h-7 w-7" />
-            </div>
-            <h3 className="serif mt-4 text-2xl">এখনো কোনো ইভেন্ট তৈরি করেননি</h3>
-            <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">
-              আপনার স্কুল, কলেজ, বিশ্ববিদ্যালয় বা ক্লাবের প্রথম ইভেন্টটি যুক্ত করে রেজিস্ট্রেশন, সেগমেন্ট ও কিউআর চেক-ইন শুরু করুন।
-            </p>
-            <Link href="/organizer/events/new" className="btn btn-primary mt-6">
-              <PlusIcon className="h-4 w-4" />
-              প্রথম ইভেন্ট তৈরি করুন
-            </Link>
-          </div>
-        )}
-
-        {!fetching && events.length > 0 && (
-          <div className="mt-4 space-y-4">
-            {events.map((event) => (
-              <div
-                key={event.id}
-                className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex min-w-0 items-start gap-4">
-                  {event.cover_image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={mediaURL(event.cover_image_url)}
-                      alt=""
-                      className="hidden h-20 w-24 shrink-0 rounded-lg object-cover sm:block"
-                    />
-                  ) : (
-                    <div className="hidden h-20 w-24 shrink-0 place-items-center rounded-lg bg-[var(--pine)]/10 text-[var(--pine)] sm:grid">
-                      <TicketIcon className="h-8 w-8" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded bg-[var(--paper)] px-2 py-0.5 text-xs font-semibold text-[var(--pine)]">
-                        {categoryLabel(event.category)}
-                      </span>
-                      <span className="rounded bg-[var(--ink)]/5 px-2 py-0.5 text-xs font-medium">
-                        {statusLabel(event.status)}
-                      </span>
-                    </div>
-                    <Link
-                      href={`/organizer/events/${event.id}`}
-                      className="serif mt-1 block text-xl font-bold hover:text-[var(--pine)] hover:underline"
-                    >
-                      {event.title}
-                    </Link>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
-                      <span>{whenDay(event.starts_at, event.timezone)}</span>
-                      <span>·</span>
-                      <span>{place(event)}</span>
-                      <span>·</span>
-                      <span className="font-semibold text-[var(--ink)]">
-                        {(event.registration_count || 0).toLocaleString("bn-BD")} জন রেজিস্টার্ড
-                      </span>
-                    </p>
+        {events !== null && rows.length > 0 && shown.length === 0 && <p className="py-8 text-center text-sm muted">এই ফিল্টারে কোনো ইভেন্ট নেই।</p>}
+        {shown.map((event) => {
+          const state = registrationWindow(event);
+          return (
+            <article key={event.id} className="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+              <Link href={`/organizer/events/${event.id}`} className="flex min-w-0 flex-1 items-center gap-4">
+                {event.cover_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={mediaURL(event.cover_image_url)} alt="" className="hidden h-20 w-28 shrink-0 rounded-[var(--radius-sm)] object-cover sm:block" />
+                ) : (
+                  <div className="hidden h-20 w-28 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--pine-soft)] text-[var(--pine)] sm:grid"><TicketIcon className="h-8 w-8" /></div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={event.status} />
+                    {state === "open" && event.registration_closes_at && <span className="badge badge-plain badge-gold">শেষ {whenDay(event.registration_closes_at, event.timezone)} · {timeLeft(event.registration_closes_at)}</span>}
+                    {state === "ended" && <span className="badge badge-plain badge-amber">শেষ তারিখ পার হয়েছে</span>}
                   </div>
+                  <h2 className="mt-1 text-lg font-bold break-words hover:text-[var(--pine)]">{event.title}</h2>
+                  <p className="text-sm muted">{[whenDay(event.starts_at, event.timezone), place(event), `${num(event.registration_count || 0)} জন রেজিস্টার্ড`].join(" · ")}</p>
                 </div>
-
-                <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-[var(--line)] pt-3 sm:border-0 sm:pt-0">
-                  <Link
-                    href={`/organizer/events/${event.id}/check-in`}
-                    className="btn btn-ghost !px-3 !py-1.5 text-xs"
-                  >
-                    <QrCodeIcon className="h-3.5 w-3.5" />
-                    চেক-ইন
-                  </Link>
-                  <Link
-                    href={`/organizer/events/${event.id}`}
-                    className="btn btn-primary !px-3 !py-1.5 text-xs"
-                  >
-                    ডেস্ক পরিচালনা
-                  </Link>
-                </div>
+              </Link>
+              <div className="flex shrink-0 gap-2 border-t border-[var(--line)] pt-3 sm:border-0 sm:pt-0">
+                <Link href={`/organizer/events/${event.id}/registrations`} className="btn btn-ghost btn-sm"><UsersIcon className="h-4 w-4" />রেজিস্ট্রেশন</Link>
+                <Link href={`/organizer/events/${event.id}/check-in`} className="btn btn-ghost btn-sm"><QrCodeIcon className="h-4 w-4" />চেক-ইন</Link>
+                <Link href={`/organizer/events/${event.id}`} className="btn btn-primary btn-sm">ডেস্ক</Link>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </article>
+          );
+        })}
+      </div>
     </main>
   );
 }
@@ -195,7 +119,7 @@ function OrganizerLanding({ onLogin }: { onLogin: () => void }) {
   return (
     <main className="pb-16">
       {/* Hero Section */}
-      <section className="border-b border-[var(--line)] bg-[#efebe1] py-14 sm:py-20">
+      <section className="border-b border-[var(--line)] bg-[var(--paper-2)] py-14 sm:py-20">
         <div className="mx-auto max-w-5xl px-4">
           <div className="max-w-3xl">
             <h1 className="serif text-4xl leading-[1.1] sm:text-5xl md:text-6xl">
@@ -329,7 +253,7 @@ function OrganizerLanding({ onLogin }: { onLogin: () => void }) {
       </section>
 
       {/* Step by Step Workflow */}
-      <section className="border-y border-[var(--line)] bg-[#efebe1] py-16">
+      <section className="border-y border-[var(--line)] bg-[var(--paper-2)] py-16">
         <div className="mx-auto max-w-5xl px-4">
           <div className="text-center">
             <h2 className="serif text-3xl sm:text-4xl">৩টি পদক্ষেপে আপনার সম্পূর্ণ ইভেন্ট পরিচালনা</h2>

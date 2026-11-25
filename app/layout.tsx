@@ -3,6 +3,7 @@ import "./globals.css";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import ClickGuard from "@/components/click-guard";
+import { UIProvider } from "@/components/ui";
 import { SessionProvider } from "@/lib/session";
 
 const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
@@ -19,12 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="bn">
       <body className="flex min-h-screen flex-col antialiased">
         <SessionProvider>
-          <ClickGuard />
-          <Header />
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
+          <UIProvider>
+            <ClickGuard />
+            <Header />
+            <div className="flex-1">{children}</div>
+            <Footer />
+          </UIProvider>
         </SessionProvider>
       </body>
     </html>

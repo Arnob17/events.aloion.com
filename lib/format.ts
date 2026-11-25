@@ -82,3 +82,83 @@ export const CATEGORIES = [
 export function categoryLabel(value?: string) {
   return CATEGORIES.find((item) => item.value === value)?.label || value || "";
 }
+
+export function timeOnly(value?: string | null, timeZone = "Asia/Dhaka") {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("bn-BD", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(value));
+}
+
+export function num(value: number) {
+  return (value || 0).toLocaleString("bn-BD");
+}
+
+/** Value for <input type="datetime-local"> in the browser's own time, from an ISO time. */
+export function toLocalInput(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** ISO time from a datetime-local value, or undefined when empty. */
+export function fromLocalInput(value: string) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+export type RegistrationWindow = "open" | "not_yet" | "ended" | "closed";
+
+/** Whether someone could register right now: the status and the opening/closing dates both count. */
+export function registrationWindow(event: { status: string; registration_opens_at?: string | null; registration_closes_at?: string | null }, now = Date.now()): RegistrationWindow {
+  if (event.status !== "registration_open") return "closed";
+  if (event.registration_opens_at && new Date(event.registration_opens_at).getTime() > now) return "not_yet";
+  if (event.registration_closes_at && new Date(event.registration_closes_at).getTime() <= now) return "ended";
+  return "open";
+}
+
+/** "৩ দিন বাকি", "৫ ঘণ্টা বাকি" until a time; empty when it has passed. */
+export function timeLeft(value?: string | null, now = Date.now()) {
+  if (!value) return "";
+  const ms = new Date(value).getTime() - now;
+  if (ms <= 0) return "";
+  const hours = Math.floor(ms / 3600000);
+  if (hours >= 48) return `${num(Math.floor(hours / 24))} দিন বাকি`;
+  if (hours >= 1) return `${num(hours)} ঘণ্টা বাকি`;
+  return `${num(Math.max(1, Math.floor(ms / 60000)))} মিনিট বাকি`;
+}
+
+export const ITEM_KINDS = [
+  { value: "tshirt", label: "টি-শার্ট" },
+  { value: "gift", label: "গিফট" },
+  { value: "goodie", label: "গুডি ব্যাগ" },
+  { value: "certificate", label: "সার্টিফিকেট" },
+  { value: "prize", label: "পুরস্কার" },
+  { value: "other", label: "অন্যান্য" },
+];
+
+export function itemKindLabel(value?: string) {
+  return ITEM_KINDS.find((item) => item.value === value)?.label || value || "";
+}
+
+export const FIELD_TYPES = [
+  { value: "text", label: "ছোট লেখা" },
+  { value: "long_text", label: "বড় লেখা" },
+  { value: "number", label: "সংখ্যা" },
+  { value: "email", label: "ইমেইল" },
+  { value: "phone", label: "ফোন" },
+  { value: "date", label: "তারিখ" },
+  { value: "dropdown", label: "ড্রপডাউন (একটি)" },
+  { value: "radio", label: "একটি বেছে নিন" },
+  { value: "multi_select", label: "একাধিক বেছে নিন" },
+  { value: "checkbox", label: "হ্যাঁ/না" },
+];
+
+export function fieldTypeLabel(value?: string) {
+  return FIELD_TYPES.find((item) => item.value === value)?.label || value || "";
+}
+
+export function fieldNeedsOptions(type: string) {
+  return type === "dropdown" || type === "radio" || type === "multi_select";
+}

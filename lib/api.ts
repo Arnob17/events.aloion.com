@@ -6,6 +6,7 @@ import type {
   EventInput,
   PublicEvent,
   Registration,
+  RegistrationEdit,
   ScanResult,
   User,
   Workspace,
@@ -105,7 +106,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ code }),
     }),
-  me: () => request<User>("/users/me"),
+  // /users/me answers 200 {authenticated:false, user:null} when nobody is logged in, and may wrap the user.
+  me: async () => {
+    const data = await request<User | { authenticated?: boolean; user?: User | null }>("/users/me");
+    const user = data && "authenticated" in data ? data.user : (data as User);
+    return user && user.id ? user : null;
+  },
   events: (query = "") => request<{ events: EventCard[]; total: number }>(`/events${query}`),
   event: (slug: string) => request<PublicEvent>(`/events/${slug}`),
   managed: () => request<{ events: EventCard[] }>("/me/events"),
@@ -133,6 +139,30 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ segment_ids: segmentIds }),
     }),
+  editRegistration: (id: number, code: string, body: RegistrationEdit) =>
+    request<Registration>(`/events/${id}/registrations/${encodeURIComponent(code)}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteRegistration: (id: number, code: string) =>
+    request(`/events/${id}/registrations/${encodeURIComponent(code)}`, { method: "DELETE" }),
+  /** Every registration matching the query, fetched page by page (for the printable list). */
+  allRegistrations: async (id: number, query = "") => {
+    const rows: Registration[] = [];
+    for (let offset = 0; offset < 5000; offset += 100) {
+      const params = new URLSearchParams(query);
+      params.set("limit", "100");
+      params.set("offset", String(offset));
+      const page = await request<{ registrations: Registration[]; total: number }>(`/events/${id}/registrations?${params}`);
+      rows.push(...(page.registrations || []));
+      if (!page.registrations?.length || rows.length >= page.total) break;
+    }
+    return rows;
+  },
+  deskLookup: (id: number, who: { code?: string; token?: string }) =>
+    request<Registration>(`/events/${id}/desk/lookup`, { method: "POST", body: JSON.stringify(who) }),
+  serveMeal: (id: number, who: { code?: string; token?: string }, undo = false) =>
+    request<Registration>(`/events/${id}/desk/meal`, { method: "POST", body: JSON.stringify({ ...who, undo }) }),
   validate: (id: number, body: object) =>
     request<ScanResult>(`/events/${id}/check-ins/validate`, { method: "POST", body: JSON.stringify(body) }),
   checkIn: (id: number, body: object) =>
@@ -168,8 +198,8 @@ export const api = {
       body: JSON.stringify(body),
     }),
   deleteItem: (id: number, itemId: number) => request(`/events/${id}/items/${itemId}`, { method: "DELETE" }),
-  distribute: (id: number, itemId: number, code: string) =>
-    request(`/events/${id}/items/${itemId}/distribute`, { method: "POST", body: JSON.stringify({ code }) }),
+  distribute: (id: number, itemId: number, who: { code?: string; token?: string }, undo = false) =>
+    request<Registration>(`/events/${id}/items/${itemId}/distribute`, { method: "POST", body: JSON.stringify({ ...who, undo }) }),
   addOrganizer: (id: number, identifier: string, role: string) =>
     request(`/events/${id}/organizers`, { method: "POST", body: JSON.stringify({ identifier, role }) }),
   removeOrganizer: (id: number, userId: number) =>
@@ -190,7 +220,7 @@ export const api = {
     body.append("file", file);
     return request<{ url: string }>("/events/media", { method: "POST", body });
   },
-  exportRegistrations: async (id: number, query = "") => {
+  exportRegistrations: async (id: number, query = "", filename = "registrations.csv") => {
     const headers = new Headers();
     const access = token();
     if (access) headers.set("Authorization", `Bearer ${access}`);
@@ -203,7 +233,7 @@ export const api = {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "registrations.csv";
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   },

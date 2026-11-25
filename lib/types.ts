@@ -70,6 +70,20 @@ export interface Meal {
   count?: number;
 }
 
+export interface Gift {
+  id: number;
+  name: string;
+  kind: string;
+  description: string;
+}
+
+export interface ItemReceipt {
+  item_id: number;
+  name: string;
+  kind: string;
+  given_at: string;
+}
+
 export interface EventItem {
   id: number;
   name: string;
@@ -110,6 +124,8 @@ export interface EventCard {
   currency: string;
   capacity?: number | null;
   registration_count: number;
+  registration_opens_at?: string | null;
+  registration_closes_at?: string | null;
 }
 
 export interface FAQ {
@@ -124,8 +140,6 @@ export interface PublicEvent extends EventCard {
   map_url: string;
   online_url: string;
   registration_required: boolean;
-  registration_opens_at?: string | null;
-  registration_closes_at?: string | null;
   waitlist_enabled: boolean;
   allow_segment_registration: boolean;
   rules: string;
@@ -136,6 +150,7 @@ export interface PublicEvent extends EventCard {
   segments: Segment[];
   fields: CustomField[];
   meals: Meal[];
+  gifts: Gift[];
   my_registration?: Registration | null;
 }
 
@@ -153,6 +168,8 @@ export interface Registration {
   segments: Segment[];
   answers: { field_id: number; key: string; label: string; field_type: string; value: string }[];
   meal?: Meal | null;
+  meal_served_at?: string | null;
+  items: ItemReceipt[];
   event_slug?: string;
   event_title?: string;
   event_starts_at?: string | null;
@@ -174,6 +191,8 @@ export interface Counts {
   pending: number;
   waitlisted: number;
   cancelled: number;
+  rejected: number;
+  meals_served: number;
   checked_in: number;
   capacity?: number | null;
   attendance_rate: number;
@@ -226,6 +245,16 @@ export interface Certificate {
   verify_url: string;
 }
 
+export interface RegistrationEdit {
+  name?: string;
+  email?: string;
+  phone?: string;
+  meal_id?: number;
+  payment_method?: string;
+  transaction_id?: string;
+  answers?: { field_id: number; value: string; values: string[] }[];
+}
+
 export interface EventInput {
   title?: string;
   summary?: string;
@@ -242,6 +271,8 @@ export interface EventInput {
   ends_at?: string | null;
   registration_opens_at?: string | null;
   registration_closes_at?: string | null;
+  clear_registration_opens_at?: boolean;
+  clear_registration_closes_at?: boolean;
   location_type?: string;
   venue?: string;
   address?: string;

@@ -6,10 +6,10 @@ import { AloionMark } from "@/components/aloion-mark";
 
 export function Footer() {
   const pathname = usePathname();
-  if (pathname.includes("/check-in")) return null;
+  if (pathname.includes("/check-in") || pathname.endsWith("/print") || pathname.startsWith("/organizer/events/")) return null;
 
   return (
-    <footer className="border-t border-[var(--line)] bg-[#eeebe2] text-[var(--ink)]">
+    <footer className="no-print border-t border-[var(--line)] bg-[var(--paper-2)] text-[var(--ink)]">
       <div className="mx-auto max-w-5xl px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
           <div className="sm:col-span-2">
